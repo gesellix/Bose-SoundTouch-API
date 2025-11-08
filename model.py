@@ -5,11 +5,6 @@ class BmxResponse:
     askAgainAfter: int
     bmx_services: List
 
-class Link:
-    def __init__(self, href):
-        self.href = href
-    href: str
-
 class IconSet:
     def __init__(self, defaultAlbumArt, largeSvg, monochromePng, monochromeSvg, smallSvg):
         self.defaultAlbumArt = defaultAlbumArt
@@ -52,14 +47,3 @@ class Service:
     streamTypes: List
     id: Id
     authenticationModel: dict
-
-
-
-
-
-
-
-
-
-
-

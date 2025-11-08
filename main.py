@@ -4,7 +4,7 @@ from typing import Annotated
 from fastapi import Depends, FastAPI
 
 from config import Settings
-from model import BmxResponse, Service, Link, Asset, Id, IconSet
+from model import BmxResponse, Service, Asset, Id, IconSet
 
 description = """
 This emulates the SoundTouch servers so you don't need connectivity
@@ -74,16 +74,19 @@ def power_on(settings: Annotated[Settings, Depends(get_settings)]):
 )
 def bmx_services(settings: Annotated[Settings, Depends(get_settings)]):
     response = BmxResponse()
-    response._links = dict(bmx_services_availability = dict(href = '../servicesAvailability'))
+    response._links = { 'bmx_services_availability': { 'href': '../servicesAvailability'} }
+    # not sure what this number means; could be a timestamp or something similar?
     response.askAgainAfter = 1277728
+    # this probably should be read from a config file or from some other kind of storage
     tunein = Service()
-    tunein._links = dict(bmx_navigate=Link(href="/v1/navigate"), bmx_token = Link(href="/v1/token"),
-        self = Link(href="/"))
+    tunein._links = { 'bmx_navigate': {'href': '/v1/navigate'}, 'bmx_token': {'href': '/v1/token'},
+        'self': {'href': '/'} }
     tunein.askAdapter = False
     tunein.assets = Asset(color="#000000",
         description="With TuneIn on SoundTouch, listen to more than 100,000 stations and the hottest podcasts, "
                     "plus live games, concerts and shows from around the world. However, you cannot access your "
                     "Favorites and Premium content on your existing TuneIn account at this time.",
+        # todo: cache/copy these icons
         icons=IconSet(defaultAlbumArt="https://media.bose.io/bmx-icons/tunein/default-album-art.png",
                       largeSvg="https://media.bose.io/bmx-icons/tunein/smallSvg.svg",
                       monochromePng="https://media.bose.io/bmx-icons/tunein/monochromePng.png",
@@ -94,7 +97,7 @@ def bmx_services(settings: Annotated[Settings, Depends(get_settings)]):
     tunein.baseUrl = settings.base_url + "/bmx/tunein"
     tunein.streamTypes = ["liveRadio","onDemand"]
     tunein.id = Id(name="TUNEIN", value=25)
-    tunein.authenticationModel = dict(anonymousAccount = dict(autoCreate = True, enabled = True))
+    tunein.authenticationModel = { 'anonymousAccount': { 'autoCreate': True, 'enabled': True} }
 
     response.bmx_services = [ tunein ]
 
