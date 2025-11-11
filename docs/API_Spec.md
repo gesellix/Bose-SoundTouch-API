@@ -37,6 +37,24 @@ Response:
 </sourceProviders>
 ```
 
+#### POST /marge/streaming/support/power_on
+
+This sends a payload with a lot basic device info, but it returns a 404.
+Maybe it once worked, but it does seem fine with a 404.
+
+The info it sends:
+
+- `device_id`
+- `device_serial_number`
+- `product_serial_number`
+- `firmware_version`
+- `gateway_ip_address`
+- `ip_address`
+- `macaddresses`
+- `network_connection_type`
+- `product_code`
+- `type`
+
 ### Bmx
 
 The BMX endpoints appear to be for streaming radio stations.
@@ -249,22 +267,3 @@ Response:
 }
 ```
 
-### Marge
-
-#### POST /marge/streaming/support/power_on
-
-This sends a payload with a lot basic device info, but it returns a 404.
-Maybe it once worked, but it does seem fine with a 404.
-
-The info it sends:
-
-- `device_id`
-- `device_serial_number`
-- `product_serial_number`
-- `firmware_version`
-- `gateway_ip_address`
-- `ip_address`
-- `macaddresses`
-- `network_connection_type`
-- `product_code`
-- `type`
