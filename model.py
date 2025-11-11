@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import List, Optional
 
 from pydantic import BaseModel, Field
@@ -65,3 +66,10 @@ class BmxPlaybackResponse(BaseModel):
     isFavorite: bool
     name: str
     streamType: str
+
+
+class SourceProvider(BaseModel):
+    id: int
+    created_on: str
+    name: str
+    updated_on: str
