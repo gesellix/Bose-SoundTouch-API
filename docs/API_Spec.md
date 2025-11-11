@@ -250,3 +250,158 @@ The info it sends:
 - `network_connection_type`
 - `product_code`
 - `type`
+
+#### GET /marge/streaming/account/{account_id}/full
+
+returns:
+
+```xml
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<account id="{account_id}">
+    <accountStatus>OK</accountStatus>
+    <devices>
+        <device deviceid="{device_id}">
+            <!-- your hardware model here -->
+            <attachedProduct product_code="SoundTouch Portable">
+                <!-- Some of our hardware devices have multiple components, as you can see here. Others just have an empty element, e.g.
+                `<components />`
+                 I'm not currently clear of the difference.
+                -->
+                <components>
+                    <component type="LIGHTSWITCH">
+                        <componentlabel>soundtouch_controller</componentlabel>
+                        <firmware-version></firmware-version>
+                        <serialnumber></serialnumber>
+                    </component>
+                    <component type="SMSC">
+                        <firmware-version>{version number}</firmware-version>
+                        <serialnumber>{smsc_component_serial_number}</serialnumber>
+                    </component>
+                </components>
+                <!-- as appropriate for you -->
+                <productlabel>soundtouch_portable</productlabel>
+                <serialnumber>{product_serial_number}</serialnumber>
+            </attachedProduct>
+            <!-- as appropriate for you -->
+            <createdOn>2015-07-07T22:30:59.000+00:00</createdOn>
+            <!-- as appropriate for you -->
+            <firmwareVersion>{version number}</firmwareVersion>
+            <!-- as appropriate for you -->
+            <ipaddress>10.0.0.123</ipaddress>
+            <name>{your user-set human-readable device name}</name>
+            <presets>
+                <preset buttonNumber="1">
+                    <!-- these will vary by what's on the preset. in this case it's tunein -->
+                    <containerArt>
+                        http://cdn-profiles.tunein.com/s30913/images/logog.jpg?t=637822205260000000</containerArt>
+                    <contentItemType>stationurl</contentItemType>
+                    <createdOn>2021-11-25T16:35:27.000+00:00</createdOn>
+                    <!--
+                    Location:
+                        - a playlist on a DLNA server: the DLNA identifier, not the user-set human-readable name, eg `playlist-4`
+                        - an iHeart radio station: is a URL encoded HTML element, eg.  `&lt;IHeartCILocation id="5279" locationType="LIVE_STATION" /&gt;`
+                        - TuneIn radio station: an endpoint to hit, e.g.  `/v1/playback/station/s30913`
+                        - Pandora, a 19-digit code, not sure where to find it, e.g.  `4437376399097798052`
+                    -->
+                    <location>/v1/playback/station/s30913</location>
+                    <!--
+                    name:
+                        - DNLA server: the name of the playlist.  
+                        - TuneIn: call letters.
+                        - iHeart: a station name.
+                    -->
+                    <name>WKRP</name>
+                    <!-- source id  seems to be per-service (eg DLNA server, TuneIn, Pandora, etc.) -->
+                    <source id="{source_id}" type="Audio">
+                        <createdOn>2017-07-19T14:48:47.000+00:00</createdOn>
+                        <!-- credential:
+                            - For DLNA we can ignore
+                            - For TuneIn, this is a JWT for the BMX API, and we can ignore
+                            - For iHeart, this is f"{a code from where?}-{your login username for the service}"
+                            - for Pandora, <credential type="token">{account_id}_[pandora_account]</credential>
+                        -->
+                        <credential type="token">{authentication credentials}</credential>
+                        <!--
+                        name:
+                            - for a DLNA playlist name is the UPNP GUID which you can get from your DLNA server
+                            - for iHeart, it's a login username (email address)
+                            - For Pandora, name of the station
+                            - for TuneIn, empty
+                        -->
+                        <name></name>
+                        <!-- sourceprovider ID returned by /marge/streaming/sourceproviders -->
+                        <sourceproviderid>1</sourceproviderid>
+                        <!--
+                        sourcename:
+                            - for iHeart, a login username (email address)
+                        -->
+                        <sourcename></sourcename>
+                        <sourceSettings />
+                        <!-- as appropriate for you -->
+                        <updatedOn>2017-07-19T14:48:47.000+00:00</updatedOn>
+                        <!-- username:
+                            - for a DLNA: the playlist UPNP GUID which you can get from your DLNA server
+                            - for iHeart, login username (email address)
+                            -  for Pandora, Pandora account name (email address)
+                        -->
+                        <username></username>
+                    </source>
+                    <!-- as appropriate for you -->
+                    <updatedOn>2024-12-30T16:01:07.000+00:00</updatedOn>
+                    <!--
+                    username:
+                        - TuneIn: station call numbers
+                    -->
+                    <username>WKRP</username>
+                </preset>
+                <!-- this will repeat for each preset button -->
+            </presets>
+            <recents>
+                <recent id="{recent_id}">
+                    <contentItemType></contentItemType>
+                    <!-- as appropriate for you -->
+                    <createdOn>2025-10-28T04:00:33.000+00:00</createdOn>
+                    <lastplayedat>2025-10-28T04:00:29.000+00:00</lastplayedat>
+                    <!-- See note above about defining location. -->
+                    <location></location>
+                    <!-- See note above about defining name. -->
+                    <name></name>
+                    <!-- See note above about defining source_id . -->
+                    <source id="" type="Audio">
+                        <!-- See note above about defining these elements. -->
+                        <createdOn>2015-07-13T04:23:12.000+00:00</createdOn>
+                        <credential type="token"></credential>
+                        <name></name>
+                        <sourceproviderid></sourceproviderid>
+                        <sourcename></sourcename>
+                        <sourcesettings />
+                        <updatedon>2015-07-13t04:23:12.000+00:00</updatedon>
+                        <username></username>
+                    </source>
+                    <sourceid>{same as source id=""}</sourceid>
+                    <updatedOn>2025-10-28T04:00:33.000+00:00</updatedOn>
+                </recent>
+                <!-- recents will repeat for a long list, however, they appear to repeat identically across all devices -->
+            </recents>
+            <serialNumber>{device serial number}</serialNumber>
+            <!-- as appropriate for you -->
+            <updatedOn>2025-08-15T23:08:50.000+00:00</updatedOn>
+        </device>
+    </devices>
+    <mode>global</mode>
+    <!-- as appropriate for you -->
+    <preferredLanguage>en</preferredLanguage>
+    <providerSettings>
+        <providerSetting>
+            <boseId>{account_id}</boseId>
+            <keyName>ELIGIBLE_FOR_TRIAL</keyName>
+            <value>true</value>
+            <!-- Not sure about providerId -->
+            <providerId>14</providerId>
+        </providerSetting>
+    </providerSettings>
+    <sources>
+        <!-- These sources are defined exactly the same way that they are in the <recents>  element. -->
+    </sources>
+</account>
+```
