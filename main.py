@@ -1,9 +1,10 @@
 from functools import lru_cache
 from typing import Annotated
 
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, Response
 
 from config import Settings
+from marge import source_providers
 from model import (
     Asset,
     Audio,
@@ -78,6 +79,34 @@ def power_on(settings: Annotated[Settings, Depends(get_settings)]):
         '<network-data xmlns="http://www.Bose.com/Schemas/2012-12/NetworkMonitor/" />'
         "</network-landscape></diagnostic-data></device-data>"
     )
+
+
+@app.get("/marge/streaming/sourceproviders", tags=["marge"])
+def streaming_sourceproviders(settings: Annotated[Settings, Depends(get_settings)]):
+    return_xml = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><sourceProviders>'
+    )
+    for provider in source_providers():
+        return_xml = (
+            return_xml
+            + '<sourceprovider id="'
+            + str(provider.id)
+            + '">'
+            + "<createdOn>"
+            + provider.created_on.toisoformat()
+            + "</createdOn>"
+            + "<name>"
+            + provider.name
+            + "</name>"
+            + "<updatedOn>"
+            + provider.updated_on.toisoformat()
+            + "</updatedOn>"
+            "</sourceprovider>"
+        )
+    return_xml = return_xml + "</sourceProviders>"
+    response = Response(content=return_xml, media_type="application/xml")
+    response.headers["content-type"] = "application/vnd.bose.streaming-v1.2+xml"
+    return response
 
 
 @app.get("/bmx/registry/v1/services", tags=["bmx"])
