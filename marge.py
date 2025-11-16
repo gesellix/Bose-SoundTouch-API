@@ -1,5 +1,4 @@
 import xml.etree.ElementTree as ET
-from datetime import datetime
 from os import path
 
 from config import Settings
@@ -66,7 +65,7 @@ def configured_sources(
     settings: Settings, account: str, device: str
 ) -> list[ConfiguredSource]:
     sources_tree = ET.parse(
-        account_device_dir(settings, account, device) + "Sources.xml"
+        path.join(account_device_dir(settings, account, device), "Sources.xml")
     )
     root = sources_tree.getroot()
     sources_list = []
@@ -91,7 +90,9 @@ def configured_sources(
 
 
 def presets(settings: Settings, account: str, device: str) -> list[Preset]:
-    storedTree = ET.parse(account_device_dir(settings, account, device) + "Presets.xml")
+    storedTree = ET.parse(
+        path.join(account_device_dir(settings, account, device), "Presets.xml")
+    )
     root = storedTree.getroot()
 
     presets = []
@@ -101,7 +102,7 @@ def presets(settings: Settings, account: str, device: str) -> list[Preset]:
         content_item = preset.find("ContentItem")
         name = content_item.find("itemName").text
         source = content_item.attrib["source"]
-        type = content_item.attrib.get("type"], "")
+        type = content_item.attrib.get("type", "")
         location = content_item.attrib["location"]
         source_account = content_item.attrib["sourceAccount"]
         is_presetable = content_item.attrib["isPresetable"]
