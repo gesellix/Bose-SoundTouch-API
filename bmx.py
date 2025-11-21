@@ -3,6 +3,7 @@ import xml.etree.ElementTree as ET
 
 from model import Audio, BmxPlaybackResponse, Stream
 
+TODO: move into constants file eventually.
 TUNEIN_DESCRIBE = "https://opml.radiotime.com/describe.ashx?id=%s"
 TUNEIN_STREAM = "http://opml.radiotime.com/Tune.ashx?id=%s"
 
