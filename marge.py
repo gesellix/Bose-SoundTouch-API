@@ -245,3 +245,10 @@ def recents_xml(settings: Settings, account: str, device: str) -> ET.Element:
         ET.SubElement(recent_element, "updatedOn").text = datestr
 
     return recents_element
+
+
+def provider_settings_xml(settings: Settings, account: str) -> ET.Element:
+    # this seems to report information like if you're eligible for a free
+    # trial, which shouldn't be all that important.
+    # let's try just returning an empty element for this
+    return ET.Element("providerSettings")
