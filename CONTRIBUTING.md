@@ -23,10 +23,15 @@ running on Python 3.12 on Ubuntu 24.04 (noble).  If somebody wants to make it
 run on other environments (e.g. on a RaspberryPi or Arduino, or via a Dockerfile)
 we welcome contributions or documentation modifications.
 
+See [the project milestones](https://github.com/deborahgu/soundcork/milestones?sort=title&direction=asc) for project goals.
+
 This is currently extremely undertested.
 
-Pay attention to [SECURITY.md](SECURITY.md) when deploying or modifying..
+Pay attention to [SECURITY.md](SECURITY.md) when deploying or modifying.
 
+### LLM / Generative AI Policy
+
+If you use any LLM tools to generate code, disclose in your pull requests how you used the tools and how much of the code is written by the tool. We will not accept any code where you, the committer, have not read every line of the code you submit.
 
 ### First time contributors
 
