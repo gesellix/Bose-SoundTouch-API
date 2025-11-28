@@ -1,4 +1,5 @@
 import xml.etree.ElementTree as ET
+from datetime import datetime
 from functools import lru_cache
 from http import HTTPStatus
 from typing import Annotated
@@ -9,9 +10,11 @@ from bmx import tunein_playback
 from config import Settings
 from marge import (
     account_full_xml,
+    etag_configured_sources,
     presets_xml,
     provider_settings_xml,
     recents_xml,
+    software_update_xml,
     source_providers,
 )
 from model import (
@@ -62,6 +65,9 @@ def get_settings():
     return Settings()
 
 
+startup_timestamp = int(datetime.now().timestamp() * 1000)
+
+
 @app.get("/")
 def read_root():
     return {"Bose": "Can't Brick Us"}
@@ -70,7 +76,7 @@ def read_root():
 @app.post(
     "/marge/streaming/support/power_on",
     tags=["marge"],
-    status_code=HTTPStatus.NOT_FOUND,
+    status_code=HTTPStatus.OK,
 )
 def power_on(settings: Annotated[Settings, Depends(get_settings)]):
     # see https://github.com/fastapi/fastapi/discussions/8091 for the TODO here
@@ -106,6 +112,7 @@ def streaming_sourceproviders(settings: Annotated[Settings, Depends(get_settings
     response = Response(content=return_xml, media_type="application/xml")
     # TODO: move content type to constants
     response.headers["content-type"] = "application/vnd.bose.streaming-v1.2+xml"
+    response.headers["etag"] = str(startup_timestamp)
     return response
 
 
@@ -122,11 +129,7 @@ def account_recents(
     settings: Annotated[Settings, Depends(get_settings)], account: str, device: str
 ):
     xml = recents_xml(settings, account, device)
-    return_xml = ET.tostring(xml, "UTF-8", xml_declaration=True)
-    response = Response(content=return_xml, media_type="application/xml")
-    # TODO: move content type to constants
-    response.headers["content-type"] = "application/vnd.bose.streaming-v1.2+xml"
-    return response
+    return bose_xml_response(xml)
 
 
 @app.get("/marge/streaming/account/{account}/provider_settings", tags=["marge"])
@@ -134,17 +137,19 @@ def account_provider_settings(
     settings: Annotated[Settings, Depends(get_settings)], account: str
 ):
     xml = provider_settings_xml(settings, account)
-    return_xml = ET.tostring(xml, "UTF-8", xml_declaration=True)
-    response = Response(content=return_xml, media_type="application/xml")
-    # TODO: move content type to constants
-    response.headers["content-type"] = "application/vnd.bose.streaming-v1.2+xml"
-    return response
+    return bose_xml_response(xml, startup_timestamp, "getProviderSettings")
+
+
+@app.get("/marge/streaming/software/update/account/{account}", tags=["marge"])
+def software_update(settings: Annotated[Settings, Depends(get_settings)], account: str):
+    xml = software_update_xml()
+    return bose_xml_response(xml)
 
 
 @app.get("/marge/streaming/account/{account}/full", tags=["marge"])
 def account_full(settings: Annotated[Settings, Depends(get_settings)], account: str):
     xml = account_full_xml(settings, account)
-    return bose_xml_response(xml)
+    return bose_xml_response(xml, startup_timestamp, "getFullAccount")
 
 
 @app.get("/bmx/registry/v1/services", tags=["bmx"])
@@ -193,10 +198,16 @@ def bmx_playback(service: str, station_id: str) -> BmxPlaybackResponse:
         return tunein_playback(station_id)
 
 
-def bose_xml_response(xml: ET.Element) -> Response:
+def bose_xml_response(xml: ET.Element, etag: int = 0, method: str = "") -> Response:
     # ET.tostring won't allow you to set standalone="yes"
     return_xml = f'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>{ET.tostring(xml, encoding="unicode")}'
     response = Response(content=return_xml, media_type="application/xml")
     # TODO: move content type to constants
     response.headers["content-type"] = "application/vnd.bose.streaming-v1.2+xml"
+
+    if etag == 0:
+        etag = startup_timestamp
+
+    response.headers["etag"] = str(etag)
+    response.headers["method_name"] = method
     return response

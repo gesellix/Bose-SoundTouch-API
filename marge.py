@@ -180,22 +180,7 @@ def content_item_source_xml(
         if i.source_key_type == content_item.source
         and i.source_key_account == content_item.source_account
     )
-
-    source = ET.Element("source")
-    source.attrib["id"] = matching_src.id
-    source.attrib["type"] = "Audio"
-    ET.SubElement(source, "createdOn").text = datestr
-    credential = ET.SubElement(source, "credential")
-    credential.text = matching_src.secret
-    credential.attrib["type"] = "token"
-    ET.SubElement(source, "name").text = content_item.name
-    ET.SubElement(source, "sourceproviderid").text = idx
-    ET.SubElement(source, "sourcename").text = matching_src.display_name
-    ET.SubElement(source, "sourcesettings")
-    ET.SubElement(source, "updatedOn").text = datestr
-    ET.SubElement(source, "username").text = content_item.name
-
-    return source
+    return confifgured_source_xml(matching_src, datestr)
 
 
 def all_sources_xml(
@@ -206,23 +191,29 @@ def all_sources_xml(
     sources_elem = ET.Element("sources")
 
     for conf_source in configured_sources:
-        source = ET.SubElement(sources_elem, "source")
-        source.attrib["id"] = conf_source.id
-        source.attrib["type"] = "Audio"
-        ET.SubElement(source, "createdOn").text = datestr
-        credential = ET.SubElement(source, "credential")
-        credential.text = conf_source.secret
-        credential.attrib["type"] = "token"
-        ET.SubElement(source, "name").text = conf_source.display_name
-        ET.SubElement(source, "sourceproviderid").text = str(
-            PROVIDERS.index(conf_source.source_key_type) + 1
-        )
-        ET.SubElement(source, "sourcename").text = conf_source.display_name
-        ET.SubElement(source, "sourcesettings")
-        ET.SubElement(source, "updatedOn").text = datestr
-        ET.SubElement(source, "username").text = conf_source.display_name
+        sources_elem.append(confifgured_source_xml(conf_source, datestr))
 
     return sources_elem
+
+
+def confifgured_source_xml(conf_source: ConfiguredSource, datestr: str) -> ET.Element:
+    source = ET.Element("source")
+    source.attrib["id"] = conf_source.id
+    source.attrib["type"] = "Audio"
+    ET.SubElement(source, "createdOn").text = datestr
+    credential = ET.SubElement(source, "credential")
+    credential.text = conf_source.secret
+    credential.attrib["type"] = "token"
+    ET.SubElement(source, "name").text = conf_source.source_key_account
+    ET.SubElement(source, "sourceproviderid").text = str(
+        PROVIDERS.index(conf_source.source_key_type) + 1
+    )
+    ET.SubElement(source, "sourcename").text = conf_source.display_name
+    ET.SubElement(source, "sourcesettings")
+    ET.SubElement(source, "updatedOn").text = datestr
+    ET.SubElement(source, "username").text = conf_source.source_key_account
+
+    return source
 
 
 def recents(settings: Settings, account: str, device: str) -> list[Recent]:
@@ -293,9 +284,14 @@ def recents_xml(settings: Settings, account: str, device: str) -> ET.Element:
 
 def provider_settings_xml(settings: Settings, account: str) -> ET.Element:
     # this seems to report information like if you're eligible for a free
-    # trial, which shouldn't be all that important.
-    # let's try just returning an empty element for this
-    return ET.Element("providerSettings")
+    # trial
+    provider_settings = ET.Element("providerSettings")
+    p_setting = ET.SubElement(provider_settings, "providerSetting")
+    ET.SubElement(p_setting, "boseId").text = account
+    ET.SubElement(p_setting, "keyName").text = "ELIGIBLE_FOR_TRIAL"
+    ET.SubElement(p_setting, "value").text = "true"
+    ET.SubElement(p_setting, "providerId").text = "14"
+    return provider_settings
 
 
 def get_device_info(settings: Settings, account: str, device: str) -> DeviceInfo:
@@ -380,3 +376,17 @@ def account_full_xml(settings: Settings, account: str) -> ET.Element:
     )
 
     return account_elem
+
+
+def software_update_xml() -> ET.Element:
+    # <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+    # <software_update><softwareUpdateLocation></softwareUpdateLocation></software_update>
+    su = ET.Element("software_update")
+    ET.SubElement(su, "softwareUpdateLocation")
+    return su
+
+
+def etag_configured_sources(settings: Settings, account, device) -> int:
+    return path.getmtime(
+        path.join(account_device_dir(settings, account, device), "Sources.xml")
+    )
