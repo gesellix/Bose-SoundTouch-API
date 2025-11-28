@@ -41,31 +41,31 @@ To point your system to another server, simple enter into read-write mode, edit 
 
 ### Installing
 
-This has been written and tested with Python 3.12. Eventually it will be bundled as an installable app but for now you'll want a virtualenv.
+This has been written and tested with Python 3.12. Eventually it will be bundled as an installable app but for now you'll want a virtual environment.
 
-1. Install virtualenv-wrapper if you don't already have it. This assumes bash;
-modify as necessary.
+
+1. You can use `venv`, `virtualenvwrapper`, or any other tool that lets you
+manage virtual environments. These docs assume `venv`.
+	- Unix, Windows, and MaxOS [installation and use guide for venv](https://packaging.python.org/en/latest/guides/installing-using-pip-and-virtual-environments/).
+	- Your operating system might have some prerequisites here. On ubuntu, you may need:
+		```sh
+		sudo apt-install python3-pip python3.12-venv
+		```
+1. Set up the virtual environment and run it. Run these commands in the
+directory where you've cloned the repository. (Adapt as needed for your shell
+or OS.)
+
 	```sh
-	sudo apt-install python3-pip
-	pip install --user virtualenvwrapper
-	mkdir -p $WORKON_HOME
-	cat <<EOT >> ~/.bashrc
-	export WORKON_HOME=${HOME}/.virtualenvs
-	export PIP_VIRTUALENV_BASE=${HOME}/.virtualenvs
-	export VIRTUALENVWRAPPER_PYTHON=/usr/bin/python3
-	source ~/.local/bin/virtualenvwrapper.sh
-	EOT
-	source ~/.bashrc
-	```
-1. Make a virtualenv for soundcork
-	```bash
-	mkvirtualenv -p3.12 soundcork
-	workon soundcork
+	mkdir .venv
+	python3.12 -m venv .venv
+	source .venv/bin/activate
 	```
 1. Install the pre-requisites
 	```bash
 	pip install requirements.txt
 	```
+
+When you're done with the virtual environment, you can type `deactivate` to leave that shell.
 
 ### Running
 
