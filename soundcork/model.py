@@ -106,6 +106,7 @@ class ConfiguredSource(BaseModel):
 
 
 class DeviceInfo(BaseModel):
+    device_id: str
     product_code: str
     device_serial_number: str
     product_serial_number: str

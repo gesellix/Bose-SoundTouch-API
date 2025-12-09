@@ -1,4 +1,6 @@
+import logging
 import xml.etree.ElementTree as ET
+from contextlib import asynccontextmanager
 from datetime import datetime
 from functools import lru_cache
 from http import HTTPStatus
@@ -8,6 +10,7 @@ from fastapi import Depends, FastAPI, Response
 
 from soundcork.bmx import tunein_playback
 from soundcork.config import Settings
+from soundcork.datastore import DataStore
 from soundcork.marge import (
     account_full_xml,
     etag_configured_sources,
@@ -27,6 +30,25 @@ from soundcork.model import (
     Service,
     Stream,
 )
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
+)
+logger = logging.getLogger(__name__)
+
+
+datastore = DataStore()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    logger.info("Starting up soundcork")
+    datastore.discover_devices()
+    logger.info("done starting up server")
+    yield
+    logger.debug("closing server")
+
 
 description = """
 This emulates the SoundTouch servers so you don't need connectivity
@@ -49,6 +71,7 @@ app = FastAPI(
     summary="Emulates SoundTouch servers.",
     version="0.0.1",
     openapi_tags=tags_metadata,
+    lifespan=lifespan,
 )
 
 
@@ -140,7 +163,7 @@ def software_update(settings: Annotated[Settings, Depends(get_settings)], accoun
 
 @app.get("/marge/streaming/account/{account}/full", tags=["marge"])
 def account_full(settings: Annotated[Settings, Depends(get_settings)], account: str):
-    xml = account_full_xml(settings, account)
+    xml = account_full_xml(settings, account, datastore)
     return bose_xml_response(xml, startup_timestamp, "getFullAccount")
 
 

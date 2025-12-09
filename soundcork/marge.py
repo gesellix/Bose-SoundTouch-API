@@ -1,6 +1,7 @@
 import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 from os import path, walk
+from typing import Any
 
 from soundcork.config import Settings
 from soundcork.model import (
@@ -11,6 +12,8 @@ from soundcork.model import (
     Recent,
     SourceProvider,
 )
+
+# pyright: reportOptionalMemberAccess=false
 
 # We'll move these into a constants file eventually.
 PROVIDERS = [
@@ -294,40 +297,7 @@ def provider_settings_xml(settings: Settings, account: str) -> ET.Element:
     return provider_settings
 
 
-def get_device_info(settings: Settings, account: str, device: str) -> DeviceInfo:
-    stored_tree = ET.parse(
-        path.join(account_device_dir(settings, account, device), "PowerOn.xml")
-    )
-    root = stored_tree.getroot()
-    device_elem = root.find("device")
-    device_id = device_elem.attrib.get("id", "")
-    device_serial_number = device_elem.find("serialnumber").text
-    firmware_version = device_elem.find("firmware-version").text
-    product_elem = device_elem.find("product")
-    product_code = product_elem.attrib.get("product_code", "")
-    product_serial_number = product_elem.find("serialnumber").text
-    ip_address = (
-        root.find("diagnostic-data").find("device-landscape").find("ip-address").text
-    )
-    system_stored_tree = ET.parse(
-        path.join(
-            account_device_dir(settings, account, device), "SystemConfigurationDB.xml"
-        )
-    )
-    name = system_stored_tree.find("DeviceName").text
-
-    return DeviceInfo(
-        device_id=device_id,
-        product_code=product_code,
-        device_serial_number=device_serial_number,
-        product_serial_number=product_serial_number,
-        firmware_version=firmware_version,
-        ip_address=ip_address,
-        name=name,
-    )
-
-
-def account_full_xml(settings: Settings, account: str) -> ET.Element:
+def account_full_xml(settings: Settings, account: str, datastore: Any) -> ET.Element:
     datestr = "2012-09-19T12:43:00.000+00:00"
 
     account_dir = path.join(settings.data_dir, account)
@@ -339,7 +309,7 @@ def account_full_xml(settings: Settings, account: str) -> ET.Element:
     last_device_id = ""
     for device_id in next(walk(account_dir))[1]:
         last_device_id = device_id
-        device_info = get_device_info(settings, account, device_id)
+        device_info = datastore.get_device_info(settings, account, device_id)
 
         device_elem = ET.SubElement(devices_elem, "device")
         device_elem.attrib["deviceid"] = device_id
@@ -386,7 +356,7 @@ def software_update_xml() -> ET.Element:
     return su
 
 
-def etag_configured_sources(settings: Settings, account, device) -> int:
+def etag_configured_sources(settings: Settings, account, device) -> float:
     return path.getmtime(
         path.join(account_device_dir(settings, account, device), "Sources.xml")
     )
