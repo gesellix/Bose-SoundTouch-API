@@ -250,12 +250,15 @@ def content_item_source_xml(
             raise HTTPException(status_code=400, detail="Invalid source")
         return configured_source_xml(matching_src, datestr)
 
-    matching_src = next(
-        i
-        for i in configured_sources
-        if i.source_key_type == content_item.source
-        and i.source_key_account == content_item.source_account
-    )
+    try:
+        matching_src = next(
+            i
+            for i in configured_sources
+            if i.source_key_type == content_item.source
+            and i.source_key_account == content_item.source_account
+        )
+    except StopIteration:
+        raise HTTPException(status_code=400, detail="Invalid source")
     return configured_source_xml(matching_src, datestr)
 
 
@@ -308,9 +311,9 @@ def recents(settings: Settings, account: str, device: str) -> list[Recent]:
         name = content_item.find("itemName").text or "test"
         source = content_item.attrib.get("source", "")
         type = content_item.attrib.get("type", "")
-        location = content_item.attrib["location"]
-        source_account = content_item.attrib["sourceAccount"]
-        is_presetable = content_item.attrib["isPresetable"]
+        location = content_item.attrib.get("location", "")
+        source_account = content_item.attrib.get("sourceAccount")
+        is_presetable = content_item.attrib.get("isPresetable")
         container_art_elem = content_item.find("containerArt")
         if container_art_elem is not None:
             container_art = container_art_elem.text
