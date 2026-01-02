@@ -5,6 +5,13 @@ from os import path, walk
 import upnpclient
 
 from soundcork.config import Settings
+from soundcork.constants import (
+    DEVICE_INFO_FILE,
+    DEVICES_DIR,
+    PRESETS_FILE,
+    RECENTS_FILE,
+    SOURCES_FILE,
+)
 from soundcork.model import ConfiguredSource, DeviceInfo, Preset, Recent
 
 # pyright: reportOptionalMemberAccess=false
@@ -16,20 +23,6 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 settings = Settings()
-
-# where we store associated devices.
-DEVICES_DIR = "devices"
-
-# retrieved per-device via {deviceip}:8090/info
-DEVICE_INFO_FILE = "DeviceInfo.xml"
-# retrieved per account via {deviceip}:8090/presets
-PRESETS_FILE = "Presets.xml"
-# retrieved per account via {deviceip}:8090/recents
-RECENTS_FILE = "Recents.xml"
-# retrieved per account via file retrieval from /mnt/nv/BoseApp-Persistence/1/Sources.xml
-# a limited version is available via {deviceip}:8090/sources but this doesn't include
-# necessary secrets
-SOURCES_FILE = "Sources.xml"
 
 
 class DataStore:
@@ -107,7 +100,7 @@ class DataStore:
         )
 
     def save_presets(self, account: str, device: str, presets_list: list[Preset]):
-        save_file = path.join(self.account_dir(account), "Presets.xml")
+        save_file = path.join(self.account_dir(account), PRESETS_FILE)
         presets_elem = ET.Element("presets")
         for preset in presets_list:
             preset_elem = ET.SubElement(presets_elem, "preset")
@@ -131,7 +124,7 @@ class DataStore:
         return presets_elem
 
     def get_presets(self, account: str, device: str) -> list[Preset]:
-        storedTree = ET.parse(path.join(self.account_dir(account), "Presets.xml"))
+        storedTree = ET.parse(path.join(self.account_dir(account), PRESETS_FILE))
         root = storedTree.getroot()
 
         presets = []
@@ -174,7 +167,7 @@ class DataStore:
         return presets
 
     def get_recents(self, account: str, device: str) -> list[Recent]:
-        stored_tree = ET.parse(path.join(self.account_dir(account), "Recents.xml"))
+        stored_tree = ET.parse(path.join(self.account_dir(account), RECENTS_FILE))
         root = stored_tree.getroot()
 
         recents = []
@@ -216,7 +209,7 @@ class DataStore:
     def save_recents(
         self, account: str, device: str, recents_list: list[Recent]
     ) -> ET.Element:
-        save_file = path.join(self.account_dir(account), "Recents.xml")
+        save_file = path.join(self.account_dir(account), RECENTS_FILE)
         recents_elem = ET.Element("recents")
         for recent in recents_list:
             recent_elem = ET.SubElement(recents_elem, "recent")
@@ -242,7 +235,7 @@ class DataStore:
     def get_configured_sources(
         self, account: str, device: str
     ) -> list[ConfiguredSource]:
-        sources_tree = ET.parse(path.join(self.account_dir(account), "Sources.xml"))
+        sources_tree = ET.parse(path.join(self.account_dir(account), SOURCES_FILE))
         root = sources_tree.getroot()
         sources_list = []
         for source_elem in root.findall("source"):
