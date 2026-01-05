@@ -221,6 +221,14 @@ def bmx_media_file(filename: str) -> FileResponse:
     raise HTTPException(status_code=404, detail="not found")
 
 
+@app.get("/updates/soundtouch", tags=["swupdate"])
+def sw_update() -> Response:
+    with open("swupdate.xml", "r") as file:
+        sw_update_response = file.read()
+        response = Response(content=sw_update_response, media_type="application/xml")
+        return response
+
+
 def bose_xml_response(xml: ET.Element, etag: int = 0, method: str = "") -> Response:
     # ET.tostring won't allow you to set standalone="yes"
     return_xml = f'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>{ET.tostring(xml, encoding="unicode")}'
