@@ -412,6 +412,6 @@ def add_device_to_account(
 
 
 def remove_device_from_account(datastore: "DataStore", account: str, device: str):
-    # TODO impelment
+    # TODO implement
     # datastore.remove_device(account, device)
     return {"ok"}
