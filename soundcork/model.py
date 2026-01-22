@@ -6,6 +6,12 @@ from pydantic import AliasChoices, BaseModel, Field
 
 class Link(BaseModel):
     href: str
+    use_internal_client: Optional[str] = Field(
+        default=None,
+        alias="useInternalClient",
+        serialization_alias="useInternalClient",
+        validation_alias=AliasChoices("useInternalClient", "use_internal_client"),
+    )
 
 
 class Links(BaseModel):
