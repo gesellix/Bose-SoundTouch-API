@@ -1,0 +1,53 @@
+package main
+
+import (
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+)
+
+func TestRootEndpoint(t *testing.T) {
+	r := setupRouter("http://localhost:8001", nil)
+	ts := httptest.NewServer(r)
+	defer ts.Close()
+
+	res, err := http.Get(ts.URL + "/")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusOK {
+		t.Errorf("Expected status OK, got %v", res.Status)
+	}
+
+	body, _ := io.ReadAll(res.Body)
+	expected := `{"Bose": "Can't Brick Us", "service": "Go/Chi"}`
+	if string(body) != expected {
+		t.Errorf("Expected body %s, got %s", expected, string(body))
+	}
+}
+
+func TestStaticMedia(t *testing.T) {
+	r := setupRouter("http://localhost:8001", nil)
+	ts := httptest.NewServer(r)
+	defer ts.Close()
+
+	// Use a known file from soundcork/media
+	res, err := http.Get(ts.URL + "/media/SiriusXM_Logo_Color.svg")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusOK {
+		t.Errorf("Expected status OK, got %v", res.Status)
+	}
+
+	contentType := res.Header.Get("Content-Type")
+	if !strings.Contains(contentType, "image/svg+xml") {
+		t.Errorf("Expected image/svg+xml content type, got %s", contentType)
+	}
+}

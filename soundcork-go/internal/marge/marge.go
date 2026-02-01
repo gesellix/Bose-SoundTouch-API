@@ -215,10 +215,14 @@ func AccountFullToXML(ds *datastore.DataStore, account string) ([]byte, error) {
 			res += fmt.Sprintf(`<name>%s</name>`, info.Name)
 
 			presets, _ := PresetsToXML(ds, account)
-			res += string(presets[len(xml.Header):]) // strip header
+			if len(presets) > len(xml.Header) {
+				res += string(presets[len(xml.Header):]) // strip header
+			}
 
 			recents, _ := RecentsToXML(ds, account)
-			res += string(recents[len(xml.Header):]) // strip header
+			if len(recents) > len(xml.Header) {
+				res += string(recents[len(xml.Header):]) // strip header
+			}
 
 			res += fmt.Sprintf(`<serialnumber>%s</serialnumber>`, info.DeviceSerialNumber)
 			res += fmt.Sprintf(`<updatedOn>%s</updatedOn>`, DateStr)

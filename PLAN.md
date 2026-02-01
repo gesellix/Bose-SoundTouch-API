@@ -41,6 +41,7 @@ This allows for incremental porting and testing without breaking existing functi
 - [x] Implement the root endpoint (`GET /`) in Go.
 - [x] Implement static file serving for `/media`.
 - [x] Port `soundcork/constants.py` to Go constants or configuration files.
+    - [x] Mirror speaker-related constants (`SpeakerHTTPPort`, etc.) for future automation.
 
 ## Phase 3: BMX (Streaming & Service Registry) (Week 2)
 
@@ -49,9 +50,10 @@ This allows for incremental porting and testing without breaking existing functi
 - [x] Port `soundcork/bmx.py`:
     - [x] Implement TuneIn XML/OPML parsing.
     - [x] Implement `tunein_playback` and `tunein_podcast_info` logic.
-- [x] Port `bmx_services.json` logic.
+- [x] Port `bmx_services.json` logic and `swupdate.xml` serving.
 - [x] Implement the `/v1/services` and `/v1/playback` endpoints in Go.
-- [ ] Verify that streaming still works on physical speakers.
+- [x] Implement comprehensive unit tests for all internal packages (`datastore`, `marge`, `bmx`, `constants`).
+- [x] Fix potential runtime panics identified during testing.
 
 ## Phase 4: Datastore & Marge (Speaker Communication) (Week 3)
 
@@ -75,6 +77,8 @@ This allows for incremental porting and testing without breaking existing functi
 
 - [x] Implement UPNP/SSDP discovery in Go (e.g., using `github.com/gesellix/Bose-SoundTouch/pkg/discovery`).
 - [x] Port the background task for device discovery (`lifespan` equivalent).
+- [x] Refactor endpoint handlers into dedicated Go files (e.g., `handlers_bmx.go`, `handlers_marge.go`).
+- [x] Implement comprehensive HTTP handler tests for all Go endpoints and split them into dedicated test files.
 - [ ] Final end-to-end verification with physical speakers.
 
 ## Phase 6: Decommissioning (Week 4)
