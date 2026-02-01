@@ -47,6 +47,20 @@ func main() {
 		fmt.Fprintf(w, `{"Bose": "Can't Brick Us", "service": "Go/Chi"}`)
 	})
 
+	// Phase 2: Static file serving for /media
+	// In the project root, media is in soundcork/media
+	// But in Docker, we might need to be careful about the paths.
+	// Let's assume the media is accessible at ./soundcork/media relative to where the binary runs.
+	mediaDir := http.Dir(os.Getenv("MEDIA_DIR"))
+	if os.Getenv("MEDIA_DIR") == "" {
+		mediaDir = http.Dir("soundcork/media")
+	}
+
+	r.Get("/media/*", func(w http.ResponseWriter, r *http.Request) {
+		fs := http.StripPrefix("/media/", http.FileServer(mediaDir))
+		fs.ServeHTTP(w, r)
+	})
+
 	// Delegation Logic: Proxy everything else to Python
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Proxying request: %s %s -> %s", r.Method, r.URL.Path, targetURL)
