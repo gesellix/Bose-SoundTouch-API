@@ -173,6 +173,17 @@ func main() {
 			w.Header().Set("Content-Type", "application/xml")
 			w.Write([]byte(marge.SoftwareUpdateToXML()))
 		})
+
+		r.Get("/accounts/{account}/devices/{device}/presets", func(w http.ResponseWriter, r *http.Request) {
+			account := chi.URLParam(r, "account")
+			data, err := marge.PresetsToXML(ds, account)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			w.Header().Set("Content-Type", "application/xml")
+			w.Write(data)
+		})
 	})
 
 	// Delegation Logic: Proxy everything else to Python

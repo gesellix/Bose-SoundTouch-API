@@ -66,7 +66,7 @@ This allows for incremental porting and testing without breaking existing functi
 - [x] Implement Marge endpoints:
     - [x] `/marge/streaming/sourceproviders`
     - [x] `/marge/accounts/{account}/full`
-    - [ ] `/marge/accounts/{account}/devices/{device}/presets`
+    - [x] `/marge/accounts/{account}/devices/{device}/presets`
 - [ ] **Checkpoint**: At this stage, almost all functional traffic should be handled by Go.
 
 ## Phase 5: Discovery & UPNP (Week 4)
