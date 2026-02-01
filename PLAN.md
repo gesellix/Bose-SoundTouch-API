@@ -26,10 +26,10 @@ This allows for incremental porting and testing without breaking existing functi
 - [x] Set up a basic web server (using `net/http` and `Chi` router).
 - [x] Implement the **Reverse Proxy**:
     - Use `httputil.ReverseProxy` to forward unrecognized requests to `http://localhost:8001`.
-- [ ] Update `Dockerfile` to a multi-stage build:
-    - Stage 1: Build Go binary.
-    - Stage 2: Final image containing both Go binary and Python environment.
-    - Stage 3: Process manager (like `supervisord` or a simple shell script) to run both.
+- [x] Update `Dockerfile` to a multi-stage build:
+    - [x] Stage 1: Build Go binary.
+    - [x] Stage 2: Final image containing both Go binary and Python environment.
+    - [x] Stage 3: Process manager (like `supervisord` or a simple shell script) to run both.
 - [x] Port basic configuration management (Environment variables).
 - [x] Establish testing baseline (Add `main_test.go`).
 

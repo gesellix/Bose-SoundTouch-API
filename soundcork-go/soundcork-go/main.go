@@ -18,6 +18,13 @@ func main() {
 		port = "8000"
 	}
 
+	bindAddr := os.Getenv("BIND_ADDR")
+	// If BIND_ADDR is explicitly set, use it. Otherwise, bind to all interfaces (IPv4 and IPv6).
+	addr := bindAddr + ":" + port
+	if bindAddr == "" {
+		addr = ":" + port
+	}
+
 	targetURL := os.Getenv("PYTHON_BACKEND_URL")
 	if targetURL == "" {
 		targetURL = "http://localhost:8001"
@@ -46,6 +53,6 @@ func main() {
 		proxy.ServeHTTP(w, r)
 	})
 
-	log.Printf("Go service starting on port %s, proxying to %s", port, targetURL)
-	log.Fatal(http.ListenAndServe(":"+port, r))
+	log.Printf("Go service starting on %s, proxying to %s", addr, targetURL)
+	log.Fatal(http.ListenAndServe(addr, r))
 }
