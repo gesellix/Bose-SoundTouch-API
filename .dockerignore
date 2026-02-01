@@ -1,0 +1,13 @@
+.venv
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.env
+.env.private
+.git
+.gitignore
+dist
+build
+*.egg-info
+.idea/
