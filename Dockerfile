@@ -4,7 +4,7 @@ WORKDIR /src
 COPY soundcork-go/go.mod soundcork-go/go.sum ./
 RUN go mod download
 COPY soundcork-go/ ./
-RUN CGO_ENABLED=0 go build -o /app/soundcork-go-bin soundcork-go/main.go
+RUN CGO_ENABLED=0 go build -o /app/soundcork-go-bin ./soundcork-go
 
 # Stage 2: Build final image
 FROM python:3.12-slim
