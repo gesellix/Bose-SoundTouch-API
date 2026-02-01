@@ -12,7 +12,7 @@ This is an attempt to reverse-engineer those servers so that users can continue 
 
 ### Context
 
-[As described here](https://flarn2006.blogspot.com/2014/09/hacking-bose-soundtouch-and-its-linux.html), it is possible to access the underlying speaker by creating a USB stick with an empty file called `remote_services` and then booting the SoundTouch with the USB stick plugged in to the USB port in the back. From there we can then telnet (port 17000) or ssh (but the ssh server running is fairly old) over and log in as root (no password).
+[As described here](https://flarn2006.blogspot.com/2014/09/hacking-bose-soundtouch-and-its-linux.html), it is possible to access the underlying speaker by creating a USB stick with an empty file called `remote_services` and then booting the SoundTouch with the USB stick plugged in to the USB port in the back. From there we can then telnet (port 23, some older blog articles mention 17000) or ssh (but the ssh server running is fairly old) over and log in as root (no password).
 
 Once logged into the speaker, you can go to `/opt/Bose/etc` and look at the file `SoundTouchSdkPrivateCfg.xml`:
 
@@ -120,7 +120,7 @@ ssh -oHostKeyAlgorithms=ssh-rsa root@<device-ip>
 
 **Via Telnet:**
 ```sh
-telnet <device-ip> 17000
+telnet <device-ip> 23
 ```
 Log in as user `root` (no password).
 
