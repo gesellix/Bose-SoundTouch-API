@@ -118,3 +118,102 @@ func TestListAllDevices_Empty(t *testing.T) {
 		t.Errorf("Expected 0 devices, got %d", len(devices))
 	}
 }
+
+func TestListAllDevices(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "soundcork-list-test-*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	ds := NewDataStore(tempDir)
+	account := "default"
+	deviceID := "BO5EBO5E-F00D-F00D-FEED-08DF1F0BA325"
+
+	info := &models.DeviceInfo{
+		DeviceID:           deviceID,
+		Name:               "Test Speaker",
+		IPAddress:          "192.168.178.28",
+		DeviceSerialNumber: deviceID,
+		ProductCode:        "SoundTouch 10",
+		FirmwareVersion:    "1.2.3",
+	}
+
+	err = ds.SaveDeviceInfo(account, deviceID, info)
+	if err != nil {
+		t.Fatalf("SaveDeviceInfo failed: %v", err)
+	}
+
+	devices, err := ds.ListAllDevices()
+	if err != nil {
+		t.Fatalf("ListAllDevices failed: %v", err)
+	}
+
+	if len(devices) != 1 {
+		t.Fatalf("Expected 1 device, got %d", len(devices))
+	}
+
+	if devices[0].DeviceID != deviceID {
+		t.Errorf("Expected DeviceID %s, got %s", deviceID, devices[0].DeviceID)
+	}
+}
+
+func TestListAllDevices_EmptyDeviceID(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "soundcork-empty-id-test-*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	ds := NewDataStore(tempDir)
+	account := "default"
+	deviceID := ""
+
+	info := &models.DeviceInfo{
+		DeviceID: deviceID,
+		Name:     "Empty ID Speaker",
+	}
+
+	err = ds.SaveDeviceInfo(account, deviceID, info)
+	if err != nil {
+		t.Fatalf("SaveDeviceInfo failed: %v", err)
+	}
+
+	devices, err := ds.ListAllDevices()
+	if err != nil {
+		t.Fatalf("ListAllDevices failed: %v", err)
+	}
+
+	if len(devices) != 1 {
+		t.Fatalf("Expected 1 device, got %d", len(devices))
+	}
+
+	if devices[0].Name != "Empty ID Speaker" {
+		t.Errorf("Expected Name 'Empty ID Speaker', got %s", devices[0].Name)
+	}
+}
+
+func TestListAllDevices_MalformedXML(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "soundcork-malformed-test-*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	ds := NewDataStore(tempDir)
+	account := "default"
+	deviceID := "malformed-device"
+
+	dir := ds.AccountDeviceDir(account, deviceID)
+	os.MkdirAll(dir, 0755)
+	os.WriteFile(filepath.Join(dir, "DeviceInfo.xml"), []byte("<info>not even closed"), 0644)
+
+	devices, err := ds.ListAllDevices()
+	if err != nil {
+		t.Fatalf("ListAllDevices should not return error on malformed XML: %v", err)
+	}
+
+	if len(devices) != 0 {
+		t.Errorf("Expected 0 devices, got %d", len(devices))
+	}
+}

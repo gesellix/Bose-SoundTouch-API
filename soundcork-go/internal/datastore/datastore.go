@@ -43,10 +43,11 @@ func (ds *DataStore) GetDeviceInfo(account, device string) (*models.DeviceInfo, 
 	}
 
 	var info struct {
-		DeviceID   string `xml:"deviceID,attr"`
-		Name       string `xml:"name"`
-		Type       string `xml:"type"`
-		ModuleType string `xml:"moduleType"`
+		XMLName    xml.Name `xml:"info"`
+		DeviceID   string   `xml:"deviceID,attr"`
+		Name       string   `xml:"name"`
+		Type       string   `xml:"type"`
+		ModuleType string   `xml:"moduleType"`
 		Components []struct {
 			Category        string `xml:"componentCategory"`
 			SoftwareVersion string `xml:"softwareVersion"`
@@ -108,12 +109,21 @@ func (ds *DataStore) ListAllDevices() ([]models.DeviceInfo, error) {
 
 		for _, dev := range deviceEntries {
 			if !dev.IsDir() {
+				// If it's a file, it might be DeviceInfo.xml directly in devices/ (when deviceID is empty)
+				if dev.Name() == constants.DeviceInfoFile {
+					info, err := ds.GetDeviceInfo(acc.Name(), "")
+					if err == nil && info != nil {
+						devices = append(devices, *info)
+					}
+				}
 				continue
 			}
 
 			info, err := ds.GetDeviceInfo(acc.Name(), dev.Name())
 			if err == nil && info != nil {
 				devices = append(devices, *info)
+			} else if err != nil {
+				fmt.Fprintf(os.Stderr, "Error loading device info for account %s, device %s: %v\n", acc.Name(), dev.Name(), err)
 			}
 		}
 	}
