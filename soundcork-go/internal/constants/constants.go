@@ -47,4 +47,13 @@ const (
 	PresetsFile    = "Presets.xml"
 	RecentsFile    = "Recents.xml"
 	SourcesFile    = "Sources.xml"
+
+	SpeakerHTTPPort            = 8090
+	SpeakerDeviceInfoPath      = "/info"
+	SpeakerRecentsPath         = "/recents"
+	SpeakerPresetsPath         = "/presets"
+	SpeakerSourcesFileLocation = "/mnt/nv/BoseApp-Persistence/1/Sources.xml"
+
+	// DateStr is the hardcoded date used in many Bose XML responses
+	DateStr = "2012-09-19T12:43:00.000+00:00"
 )
