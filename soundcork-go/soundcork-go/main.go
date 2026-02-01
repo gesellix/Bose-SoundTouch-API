@@ -11,6 +11,8 @@ import (
 	"strings"
 
 	"github.com/deborahgu/soundcork/internal/bmx"
+	"github.com/deborahgu/soundcork/internal/datastore"
+	"github.com/deborahgu/soundcork/internal/marge"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 )
@@ -39,6 +41,12 @@ func main() {
 	}
 
 	proxy := httputil.NewSingleHostReverseProxy(target)
+
+	dataDir := os.Getenv("DATA_DIR")
+	if dataDir == "" {
+		dataDir = "data"
+	}
+	ds := datastore.NewDataStore(dataDir)
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
@@ -130,6 +138,40 @@ func main() {
 			}
 			w.Header().Set("Content-Type", "application/json")
 			json.NewEncoder(w).Encode(resp)
+		})
+	})
+
+	// Phase 4: Marge endpoints
+	r.Route("/marge", func(r chi.Router) {
+		r.Get("/streaming/sourceproviders", func(w http.ResponseWriter, r *http.Request) {
+			data, err := marge.SourceProvidersToXML()
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			w.Header().Set("Content-Type", "application/xml")
+			w.Write(data)
+		})
+
+		r.Get("/accounts/{account}/full", func(w http.ResponseWriter, r *http.Request) {
+			account := chi.URLParam(r, "account")
+			data, err := marge.AccountFullToXML(ds, account)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			w.Header().Set("Content-Type", "application/xml")
+			w.Write(data)
+		})
+
+		r.Post("/streaming/support/power_on", func(w http.ResponseWriter, r *http.Request) {
+			// Just return OK like the Python implementation
+			w.WriteHeader(http.StatusOK)
+		})
+
+		r.Get("/updates/soundtouch", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/xml")
+			w.Write([]byte(marge.SoftwareUpdateToXML()))
 		})
 	})
 
