@@ -57,16 +57,16 @@ This allows for incremental porting and testing without breaking existing functi
 
 **Goal**: Port the persistence layer and complex XML generation.
 
-- [ ] Implement the `DataStore` in Go:
-    - Filesystem operations (Read/Write XML).
-    - Directory structure management (`/data/{account}/devices/...`).
-- [ ] Port `soundcork/marge.py` logic:
-    - XML generation for Presets, Recents, and Account Info.
-    - Logic for adding/removing devices.
-- [ ] Implement Marge endpoints:
-    - `/marge/streaming/sourceproviders`
-    - `/marge/accounts/{account}/full`
-    - `/marge/accounts/{account}/devices/{device}/presets`
+- [x] Implement the `DataStore` in Go:
+    - [x] Filesystem operations (Read/Write XML).
+    - [x] Directory structure management (`/data/{account}/devices/...`).
+- [x] Port `soundcork/marge.py` logic:
+    - [x] XML generation for Presets, Recents, and Account Info.
+    - [ ] Logic for adding/removing devices.
+- [x] Implement Marge endpoints:
+    - [x] `/marge/streaming/sourceproviders`
+    - [x] `/marge/accounts/{account}/full`
+    - [ ] `/marge/accounts/{account}/devices/{device}/presets`
 - [ ] **Checkpoint**: At this stage, almost all functional traffic should be handled by Go.
 
 ## Phase 5: Discovery & UPNP (Week 4)
