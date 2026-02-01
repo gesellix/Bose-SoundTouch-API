@@ -79,6 +79,7 @@ This allows for incremental porting and testing without breaking existing functi
 - [x] Port the background task for device discovery (`lifespan` equivalent).
 - [x] Refactor endpoint handlers into dedicated Go files (e.g., `handlers_bmx.go`, `handlers_marge.go`).
 - [x] Implement comprehensive HTTP handler tests for all Go endpoints and split them into dedicated test files.
+- [x] Add GitHub Actions workflow for the Go implementation.
 - [ ] Final end-to-end verification with physical speakers.
 
 ## Phase 6: Decommissioning (Week 4)

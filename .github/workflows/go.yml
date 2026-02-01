@@ -1,0 +1,32 @@
+name: Go CI
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version-file: soundcork-go/go.mod
+        cache-dependency-path: soundcork-go/go.sum
+
+    - name: Install dependencies
+      run: |
+        cd soundcork-go
+        go mod download
+
+    - name: Build
+      run: |
+        cd soundcork-go
+        go build -v ./...
+
+    - name: Test
+      run: |
+        cd soundcork-go
+        go test -v ./...
