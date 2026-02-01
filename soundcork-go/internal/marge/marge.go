@@ -3,7 +3,6 @@ package marge
 import (
 	"encoding/xml"
 	"fmt"
-	"io"
 	"os"
 	"strconv"
 	"time"
@@ -240,4 +239,208 @@ func AccountFullToXML(ds *datastore.DataStore, account string) ([]byte, error) {
 
 	res += `</account>`
 	return []byte(res), nil
+}
+
+func UpdatePreset(ds *datastore.DataStore, account string, device string, presetNumber int, sourceXML []byte) ([]byte, error) {
+	sources, err := ds.GetConfiguredSources(account)
+	if err != nil {
+		return nil, err
+	}
+	presets, err := ds.GetPresets(account)
+	if err != nil {
+		return nil, err
+	}
+
+	var newPresetElem struct {
+		Name            string `xml:"name"`
+		SourceID        string `xml:"sourceid"`
+		Location        string `xml:"location"`
+		ContentItemType string `xml:"contentItemType"`
+		ContainerArt    string `xml:"containerArt"`
+	}
+	if err := xml.Unmarshal(sourceXML, &newPresetElem); err != nil {
+		return nil, err
+	}
+
+	var matchingSrc *models.ConfiguredSource
+	for _, s := range sources {
+		if s.ID == newPresetElem.SourceID {
+			matchingSrc = &s
+			break
+		}
+	}
+	if matchingSrc == nil {
+		return nil, fmt.Errorf("invalid account/source")
+	}
+
+	nowStr := strconv.FormatInt(time.Now().Unix(), 10)
+	presetObj := models.Preset{
+		ContentItem: models.ContentItem{
+			ID:            strconv.Itoa(presetNumber),
+			Name:          newPresetElem.Name,
+			Source:        matchingSrc.SourceKeyType,
+			Type:          newPresetElem.ContentItemType,
+			Location:      newPresetElem.Location,
+			SourceAccount: matchingSrc.SourceKeyAccount,
+			SourceID:      newPresetElem.SourceID,
+		},
+		ContainerArt: newPresetElem.ContainerArt,
+		CreatedOn:    nowStr,
+		UpdatedOn:    nowStr,
+	}
+
+	// Ensure presets list is large enough
+	for len(presets) < presetNumber {
+		presets = append(presets, models.Preset{})
+	}
+	presets[presetNumber-1] = presetObj
+
+	if err := ds.SavePresets(account, presets); err != nil {
+		return nil, err
+	}
+
+	// Return XML for the single preset
+	res := fmt.Sprintf(`<preset buttonNumber="%s">`, presetObj.ID)
+	res += fmt.Sprintf(`<containerArt>%s</containerArt>`, presetObj.ContainerArt)
+	res += fmt.Sprintf(`<contentItemType>%s</contentItemType>`, presetObj.Type)
+	res += fmt.Sprintf(`<createdOn>%s</createdOn>`, DateStr)
+	res += fmt.Sprintf(`<location>%s</location>`, presetObj.Location)
+	res += fmt.Sprintf(`<name>%s</name>`, presetObj.Name)
+	res += GetConfiguredSourceXML(*matchingSrc)
+	res += fmt.Sprintf(`<updatedOn>%s</updatedOn>`, DateStr)
+	res += `</preset>`
+
+	return append([]byte(xml.Header), []byte(res)...), nil
+}
+
+func AddRecent(ds *datastore.DataStore, account string, device string, sourceXML []byte) ([]byte, error) {
+	sources, err := ds.GetConfiguredSources(account)
+	if err != nil {
+		return nil, err
+	}
+	recents, err := ds.GetRecents(account)
+	if err != nil {
+		return nil, err
+	}
+
+	var newRecentElem struct {
+		Name            string `xml:"name"`
+		SourceID        string `xml:"sourceid"`
+		Location        string `xml:"location"`
+		ContentItemType string `xml:"contentItemType"`
+		LastPlayedAt    string `xml:"lastplayedat"`
+	}
+	if err := xml.Unmarshal(sourceXML, &newRecentElem); err != nil {
+		return nil, err
+	}
+
+	var matchingSrc *models.ConfiguredSource
+	for _, s := range sources {
+		if s.ID == newRecentElem.SourceID {
+			matchingSrc = &s
+			break
+		}
+	}
+	if matchingSrc == nil {
+		return nil, fmt.Errorf("invalid account/source")
+	}
+
+	utcTime := time.Now().Unix()
+	if newRecentElem.LastPlayedAt != "" {
+		if t, err := time.Parse(time.RFC3339, newRecentElem.LastPlayedAt); err == nil {
+			utcTime = t.Unix()
+		}
+	}
+
+	// Find existing
+	var recentObj *models.Recent
+	for i, r := range recents {
+		if r.Source == matchingSrc.SourceKeyType && r.Location == newRecentElem.Location && r.SourceAccount == matchingSrc.SourceKeyAccount {
+			recents[i].UtcTime = strconv.FormatInt(utcTime, 10)
+			recentObj = &recents[i]
+			// Move to front
+			recents = append([]models.Recent{*recentObj}, append(recents[:i], recents[i+1:]...)...)
+			break
+		}
+	}
+
+	createdOn := DateStr
+	if recentObj == nil {
+		maxID := 0
+		for _, r := range recents {
+			if id, err := strconv.Atoi(r.ID); err == nil && id > maxID {
+				maxID = id
+			}
+		}
+		recentObj = &models.Recent{
+			ContentItem: models.ContentItem{
+				ID:            strconv.Itoa(maxID + 1),
+				Name:          newRecentElem.Name,
+				Source:        matchingSrc.SourceKeyType,
+				Type:          newRecentElem.ContentItemType,
+				Location:      newRecentElem.Location,
+				SourceAccount: matchingSrc.SourceKeyAccount,
+				SourceID:      newRecentElem.SourceID,
+				IsPresetable:  "true",
+			},
+			DeviceID: device,
+			UtcTime:  strconv.FormatInt(utcTime, 10),
+		}
+		createdOn = time.Now().Format(time.RFC3339)
+		recents = append([]models.Recent{*recentObj}, recents...)
+		if len(recents) > 10 {
+			recents = recents[:10]
+		}
+	}
+
+	if err := ds.SaveRecents(account, recents); err != nil {
+		return nil, err
+	}
+
+	lastPlayed := time.Unix(utcTime, 0).Format(time.RFC3339)
+	res := fmt.Sprintf(`<recent id="%s">`, recentObj.ID)
+	res += fmt.Sprintf(`<contentItemType>%s</contentItemType>`, recentObj.Type)
+	res += fmt.Sprintf(`<createdOn>%s</createdOn>`, createdOn)
+	res += fmt.Sprintf(`<lastplayedat>%s</lastplayedat>`, lastPlayed)
+	res += fmt.Sprintf(`<location>%s</location>`, recentObj.Location)
+	res += fmt.Sprintf(`<name>%s</name>`, recentObj.Name)
+	res += GetConfiguredSourceXML(*matchingSrc)
+	res += fmt.Sprintf(`<updatedOn>%s</updatedOn>`, createdOn)
+	res += `</recent>`
+
+	return append([]byte(xml.Header), []byte(res)...), nil
+}
+
+func AddDeviceToAccount(ds *datastore.DataStore, account string, sourceXML []byte) ([]byte, error) {
+	var newDeviceElem struct {
+		DeviceID string `xml:"deviceid,attr"`
+		Name     string `xml:"name"`
+	}
+	if err := xml.Unmarshal(sourceXML, &newDeviceElem); err != nil {
+		return nil, err
+	}
+
+	info := &models.DeviceInfo{
+		DeviceID: newDeviceElem.DeviceID,
+		Name:     newDeviceElem.Name,
+		// Other fields will be filled by discovery later or default
+	}
+
+	if err := ds.SaveDeviceInfo(account, newDeviceElem.DeviceID, info); err != nil {
+		return nil, err
+	}
+
+	createdOn := time.Now().Format(time.RFC3339)
+	res := fmt.Sprintf(`<device deviceid="%s">`, newDeviceElem.DeviceID)
+	res += fmt.Sprintf(`<createdOn>%s</createdOn>`, createdOn)
+	res += `<ipaddress></ipaddress>`
+	res += fmt.Sprintf(`<name>%s</name>`, newDeviceElem.Name)
+	res += fmt.Sprintf(`<updatedOn>%s</updatedOn>`, createdOn)
+	res += `</device>`
+
+	return append([]byte(xml.Header), []byte(res)...), nil
+}
+
+func RemoveDeviceFromAccount(ds *datastore.DataStore, account string, device string) error {
+	return ds.RemoveDevice(account, device)
 }

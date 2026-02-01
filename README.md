@@ -14,7 +14,7 @@ This is an attempt to reverse-engineer those servers so that users can continue 
 
 ### Context
 
-[As described here](https://flarn2006.blogspot.com/2014/09/hacking-bose-soundtouch-and-its-linux.html), it is possible to access the underlying server by creating a USB stick with an empty file called ```remote_services``` and then booting the SoundTouch with the USB stick plugged in to the USB port in the back. From there we can then telnet (or ssh, but the ssh server running is fairly old) over and log in as root (no password).
+[As described here](https://flarn2006.blogspot.com/2014/09/hacking-bose-soundtouch-and-its-linux.html), it is possible to access the underlying server by creating a USB stick with an empty file called ```remote_services``` and then booting the SoundTouch with the USB stick plugged in to the USB port in the back. From there we can then telnet (port 17000) or ssh (but the ssh server running is fairly old) over and log in as root (no password).
 
 Once logged into the speaker, you can go to `/opt/Bose/etc` and look at the file `SoundTouchSdkPrivateCfg.xml`:
 
@@ -135,7 +135,7 @@ Once a soundcork server is running, the next step is to configure your SoundTouc
 
 Once the speaker has rebooted, you can connect to it via telnet. So if your SoundTouch device is on 192.168.1.158, you can do
 
-	telnet 192.168.1.158
+	telnet 192.168.1.158 17000
 	
 You'll get a login screen.  Log in as user ```root```; there is no password. 
 
@@ -184,46 +184,64 @@ For Sources, there is some information that is stored on the devices themselves 
 
 #### Configuring the Bose speaker to use the soundcork server
 
-Now that the soundcork server has all of the information that it needs, we're ready to tell the speaker to use the soundcork server instead of the Bose servers.  For this, we go to 
+Now that the soundcork server has all of the information that it needs, we're ready to tell the speaker to use the soundcork server instead of the Bose servers.
 
-	cd /opt/Bose/etc/
+You can configure the speaker either by editing the file directly on the device using `vi`, or by downloading it, modifying it locally, and uploading it back.
 
-set the filesystem to be read-write (this is a shortcut that the Bose engineers were nice enough to put in by default)
+**Option A: Edit directly on the device**
 
-	rw
-	
-and edit the file ```SoundTouchSdkPrivateCfg.xml```
+1. Telnet or SSH into the speaker.
+2. Set the filesystem to read-write: `rw`.
+3. Edit `/opt/Bose/etc/SoundTouchSdkPrivateCfg.xml` using `vi`.
+4. Update the URLs to point to your soundcork server (see below).
+5. Reboot the speaker: `reboot`.
 
-	vi SoundTouchSdkPrivateCfg.xml
-	
-The original values are
+**Option B: Download, modify, and upload (using scp)**
 
-	<?xml version="1.0" encoding="utf-8"?>
-	<SoundTouchSdkPrivateCfg>
-  	<margeServerUrl>https://streaming.bose.com</margeServerUrl>
-  	<statsServerUrl>https://events.api.bosecm.com</statsServerUrl>
-  	<swUpdateUrl>https://worldwide.bose.com/updates/soundtouch</swUpdateUrl>
-  	<usePandoraProductionServer>true</usePandoraProductionServer>
-  	<isZeroconfEnabled>true</isZeroconfEnabled>
-  	<saveMargeCustomerReport>false</saveMargeCustomerReport>
-  	<bmxRegistryUrl>https://content.api.bose.io/bmx/registry/v1/services</bmxRegistryUrl>
-	</SoundTouchSdkPrivateCfg>>
-	
-set these all to point to the soundcork server
+1. Download the file from the speaker:
+   ```sh
+   scp -oHostKeyAlgorithms=ssh-rsa root@<device-ip>:/opt/Bose/etc/SoundTouchSdkPrivateCfg.xml ./SoundTouchSdkPrivateCfg.xml
+   ```
+2. Modify the file locally using your favorite text editor.
+3. SSH into the speaker and set the filesystem to read-write:
+   ```sh
+   ssh -oHostKeyAlgorithms=ssh-rsa root@<device-ip> "rw"
+   ```
+4. Upload the modified file back to the speaker:
+   ```sh
+   scp -oHostKeyAlgorithms=ssh-rsa ./SoundTouchSdkPrivateCfg.xml root@<device-ip>:/opt/Bose/etc/SoundTouchSdkPrivateCfg.xml
+   ```
+5. Reboot the speaker:
+   ```sh
+   ssh -oHostKeyAlgorithms=ssh-rsa root@<device-ip> "reboot"
+   ```
 
-	<?xml version="1.0" encoding="utf-8"?>
-	<SoundTouchSdkPrivateCfg>
-  	<margeServerUrl>http://soundcork.local.example.com:8000/marge</margeServerUrl>
-  	<statsServerUrl>http://soundcork.local.example.com:8000</statsServerUrl>
-  	<swUpdateUrl>http://soundcork.local.example.com:8000/updates/soundtouch</swUpdateUrl>
-  	<usePandoraProductionServer>true</usePandoraProductionServer>
-  	<isZeroconfEnabled>true</isZeroconfEnabled>
-  	<saveMargeCustomerReport>false</saveMargeCustomerReport>
-  	<bmxRegistryUrl>http://soundcork.local.example.com:8000/bmx/registry/v1/services</bmxRegistryUrl>
-	</SoundTouchSdkPrivateCfg>>
+**Option C: Use the automated setup script**
 
-And finally, the moment of truth: reboot the speaker.  You can do it the way we did earlier by unplugging it, or, now that we have access to the command prompt, just run
+A helper script `setup-speaker.sh` is provided to automate the generation and upload of the configuration file.
 
-	reboot
+1. Ensure your soundcork server is running.
+2. Run the script with your server's base URL and the speaker's IP:
+   ```sh
+   ./setup-speaker.sh http://your-host-ip:8000 <device-ip>
+   ```
+   The script will generate the XML, upload it using `scp`, set the speaker to read-write mode, and trigger a reboot.
+
+**Target Configuration:**
+
+Update the URLs in `SoundTouchSdkPrivateCfg.xml` as follows:
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<SoundTouchSdkPrivateCfg>
+  <margeServerUrl>http://soundcork.local.example.com:8000/marge</margeServerUrl>
+  <statsServerUrl>http://soundcork.local.example.com:8000</statsServerUrl>
+  <swUpdateUrl>http://soundcork.local.example.com:8000/updates/soundtouch</swUpdateUrl>
+  <usePandoraProductionServer>true</usePandoraProductionServer>
+  <isZeroconfEnabled>true</isZeroconfEnabled>
+  <saveMargeCustomerReport>false</saveMargeCustomerReport>
+  <bmxRegistryUrl>http://soundcork.local.example.com:8000/bmx/registry/v1/services</bmxRegistryUrl>
+</SoundTouchSdkPrivateCfg>
+```
 	
 

@@ -283,6 +283,84 @@ func (ds *DataStore) SaveRecents(account string, recents []models.Recent) error 
 	return os.WriteFile(path, append(header, data...), 0644)
 }
 
+func (ds *DataStore) SaveDeviceInfo(account string, device string, info *models.DeviceInfo) error {
+	dir := ds.AccountDeviceDir(account, device)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return err
+	}
+	path := filepath.Join(dir, constants.DeviceInfoFile)
+
+	type ComponentXML struct {
+		ComponentCategory string `xml:"componentCategory"`
+		SoftwareVersion   string `xml:"softwareVersion,omitempty"`
+		SerialNumber      string `xml:"serialNumber,omitempty"`
+	}
+
+	type NetworkInfoXML struct {
+		Type      string `xml:"type,attr"`
+		IPAddress string `xml:"ipAddress"`
+	}
+
+	type InfoXML struct {
+		XMLName     xml.Name         `xml:"info"`
+		DeviceID    string           `xml:"deviceID,attr"`
+		Name        string           `xml:"name"`
+		Type        string           `xml:"type"`
+		ModuleType  string           `xml:"moduleType"`
+		Components  []ComponentXML   `xml:"components>component"`
+		NetworkInfo []NetworkInfoXML `xml:"networkInfo"`
+	}
+
+	// Parsing product code back to type and moduleType (best effort)
+	// Python: f"{type} {module_type}"
+	devType := info.ProductCode
+	moduleType := ""
+	for i := 0; i < len(info.ProductCode); i++ {
+		if info.ProductCode[i] == ' ' {
+			devType = info.ProductCode[:i]
+			moduleType = info.ProductCode[i+1:]
+			break
+		}
+	}
+
+	ix := InfoXML{
+		DeviceID:   info.DeviceID,
+		Name:       info.Name,
+		Type:       devType,
+		ModuleType: moduleType,
+		Components: []ComponentXML{
+			{
+				ComponentCategory: "SCM",
+				SoftwareVersion:   info.FirmwareVersion,
+				SerialNumber:      info.DeviceSerialNumber,
+			},
+			{
+				ComponentCategory: "PackagedProduct",
+				SerialNumber:      info.ProductSerialNumber,
+			},
+		},
+		NetworkInfo: []NetworkInfoXML{
+			{
+				Type:      "SCM",
+				IPAddress: info.IPAddress,
+			},
+		},
+	}
+
+	data, err := xml.MarshalIndent(ix, "", "    ")
+	if err != nil {
+		return err
+	}
+
+	header := []byte(xml.Header)
+	return os.WriteFile(path, append(header, data...), 0644)
+}
+
+func (ds *DataStore) RemoveDevice(account string, device string) error {
+	dir := ds.AccountDeviceDir(account, device)
+	return os.RemoveAll(dir)
+}
+
 func (ds *DataStore) GetConfiguredSources(account string) ([]models.ConfiguredSource, error) {
 	path := filepath.Join(ds.AccountDir(account), constants.SourcesFile)
 	data, err := os.ReadFile(path)
