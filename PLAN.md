@@ -62,19 +62,19 @@ This allows for incremental porting and testing without breaking existing functi
     - [x] Directory structure management (`/data/{account}/devices/...`).
 - [x] Port `soundcork/marge.py` logic:
     - [x] XML generation for Presets, Recents, and Account Info.
-    - [ ] Logic for adding/removing devices.
+    - [x] Logic for adding/removing devices.
 - [x] Implement Marge endpoints:
     - [x] `/marge/streaming/sourceproviders`
     - [x] `/marge/accounts/{account}/full`
     - [x] `/marge/accounts/{account}/devices/{device}/presets`
-- [ ] **Checkpoint**: At this stage, almost all functional traffic should be handled by Go.
+- [x] **Checkpoint**: At this stage, almost all functional traffic should be handled by Go.
 
 ## Phase 5: Discovery & UPNP (Week 4)
 
 **Goal**: Remove the last dependency on Python.
 
-- [ ] Implement UPNP/SSDP discovery in Go (e.g., using `github.com/gesellix/Bose-SoundTouch/pkg/discovery`).
-- [ ] Port the background task for device discovery (`lifespan` equivalent).
+- [x] Implement UPNP/SSDP discovery in Go (e.g., using `github.com/gesellix/Bose-SoundTouch/pkg/discovery`).
+- [x] Port the background task for device discovery (`lifespan` equivalent).
 - [ ] Final end-to-end verification with physical speakers.
 
 ## Phase 6: Decommissioning (Week 4)
@@ -85,6 +85,16 @@ This allows for incremental porting and testing without breaking existing functi
 - [ ] Delete all `.py` files and `requirements.txt`.
 - [ ] Update `Dockerfile` to a single-stage Go build (reducing image size from ~200MB to ~20MB).
 - [ ] Final documentation updates.
+
+## Phase 7: Automated Setup & UI (Future)
+
+**Goal**: Simplify the initial configuration of SoundTouch devices.
+
+- [x] Implement an automated "Setup" feature in `soundcork-go`:
+    - [x] Create a standalone `setup-speaker.sh` script for easy migration.
+    - [ ] Integrate SSH/SCP (via Go `ssh` library) into the Go service for a programmatic approach.
+    - [ ] Auto-discover devices and offer a "Migrate to Soundcork" button.
+- [ ] Build a basic Web UI for monitoring and managing discovered devices.
 
 ---
 

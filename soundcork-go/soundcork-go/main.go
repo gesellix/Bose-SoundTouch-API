@@ -1,18 +1,24 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/deborahgu/soundcork/internal/bmx"
 	"github.com/deborahgu/soundcork/internal/datastore"
 	"github.com/deborahgu/soundcork/internal/marge"
+	"github.com/deborahgu/soundcork/internal/models"
+	"github.com/gesellix/bose-soundtouch/pkg/discovery"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 )
@@ -47,6 +53,38 @@ func main() {
 		dataDir = "data"
 	}
 	ds := datastore.NewDataStore(dataDir)
+
+	// Phase 5: Device Discovery
+	go func() {
+		for {
+			log.Println("Scanning for Bose devices...")
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			svc := discovery.NewService(10 * time.Second)
+			devices, err := svc.DiscoverDevices(ctx)
+			cancel()
+			if err != nil {
+				log.Printf("Discovery error: %v", err)
+			} else {
+				for _, d := range devices {
+					log.Printf("Discovered Bose device: %s at %s", d.Name, d.Host)
+					// Update datastore for a default account (e.g., "default")
+					// In a real scenario, we might need to know which account this device belongs to.
+					info := &models.DeviceInfo{
+						DeviceID:           d.SerialNo,
+						Name:               d.Name,
+						IPAddress:          d.Host,
+						DeviceSerialNumber: d.SerialNo,
+						ProductCode:        d.ModelID,
+						FirmwareVersion:    "0.0.0", // Unknown from discovery
+					}
+					if err := ds.SaveDeviceInfo("default", d.SerialNo, info); err != nil {
+						log.Printf("Failed to save device info: %v", err)
+					}
+				}
+			}
+			time.Sleep(5 * time.Minute)
+		}
+	}()
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
@@ -183,6 +221,73 @@ func main() {
 			}
 			w.Header().Set("Content-Type", "application/xml")
 			w.Write(data)
+		})
+
+		r.Post("/accounts/{account}/devices/{device}/presets/{presetNumber}", func(w http.ResponseWriter, r *http.Request) {
+			account := chi.URLParam(r, "account")
+			device := chi.URLParam(r, "device")
+			presetNumberStr := chi.URLParam(r, "presetNumber")
+			presetNumber, err := strconv.Atoi(presetNumberStr)
+			if err != nil {
+				http.Error(w, "Invalid preset number", http.StatusBadRequest)
+				return
+			}
+			body, err := io.ReadAll(r.Body)
+			if err != nil {
+				http.Error(w, "Failed to read body", http.StatusInternalServerError)
+				return
+			}
+			data, err := marge.UpdatePreset(ds, account, device, presetNumber, body)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			w.Header().Set("Content-Type", "application/xml")
+			w.Write(data)
+		})
+
+		r.Post("/accounts/{account}/devices/{device}/recents", func(w http.ResponseWriter, r *http.Request) {
+			account := chi.URLParam(r, "account")
+			device := chi.URLParam(r, "device")
+			body, err := io.ReadAll(r.Body)
+			if err != nil {
+				http.Error(w, "Failed to read body", http.StatusInternalServerError)
+				return
+			}
+			data, err := marge.AddRecent(ds, account, device, body)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			w.Header().Set("Content-Type", "application/xml")
+			w.Write(data)
+		})
+
+		r.Post("/accounts/{account}/devices", func(w http.ResponseWriter, r *http.Request) {
+			account := chi.URLParam(r, "account")
+			body, err := io.ReadAll(r.Body)
+			if err != nil {
+				http.Error(w, "Failed to read body", http.StatusInternalServerError)
+				return
+			}
+			data, err := marge.AddDeviceToAccount(ds, account, body)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			w.Header().Set("Content-Type", "application/xml")
+			w.Write(data)
+		})
+
+		r.Delete("/accounts/{account}/devices/{device}", func(w http.ResponseWriter, r *http.Request) {
+			account := chi.URLParam(r, "account")
+			device := chi.URLParam(r, "device")
+			if err := marge.RemoveDeviceFromAccount(ds, account, device); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`{"ok": true}`))
 		})
 	})
 
