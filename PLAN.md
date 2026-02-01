@@ -37,10 +37,10 @@ This allows for incremental porting and testing without breaking existing functi
 
 **Goal**: Port data structures and simple endpoints.
 
-- [ ] Translate `soundcork/model.py` (Pydantic) to Go `structs` with JSON/XML tags.
+- [x] Translate `soundcork/model.py` (Pydantic) to Go `structs` with JSON/XML tags.
 - [x] Implement the root endpoint (`GET /`) in Go.
 - [x] Implement static file serving for `/media`.
-- [ ] Port `soundcork/constants.py` to Go constants or configuration files.
+- [x] Port `soundcork/constants.py` to Go constants or configuration files.
 
 ## Phase 3: BMX (Streaming & Service Registry) (Week 2)
 
