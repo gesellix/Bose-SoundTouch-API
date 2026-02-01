@@ -21,6 +21,13 @@ func setupRouter(targetURL string) *chi.Mux {
 		w.Write([]byte(`{"Bose": "Can't Brick Us", "service": "Go/Chi"}`))
 	})
 
+	// Setup media directory for tests
+	mediaDir := http.Dir("../../soundcork/media")
+	r.Get("/media/*", func(w http.ResponseWriter, r *http.Request) {
+		fs := http.StripPrefix("/media/", http.FileServer(mediaDir))
+		fs.ServeHTTP(w, r)
+	})
+
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
 		proxy.ServeHTTP(w, r)
 	})
@@ -78,5 +85,27 @@ func TestProxyDelegation(t *testing.T) {
 	body, _ := io.ReadAll(res.Body)
 	if !strings.Contains(string(body), "Proxied to http://localhost:8001") {
 		t.Errorf("Expected proxy message, got %s", string(body))
+	}
+}
+
+func TestStaticMedia(t *testing.T) {
+	r := setupRouter("http://localhost:8001")
+	ts := httptest.NewServer(r)
+	defer ts.Close()
+
+	// Use a known file from soundcork/media
+	res, err := http.Get(ts.URL + "/media/SiriusXM_Logo_Color.svg")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusOK {
+		t.Errorf("Expected status OK, got %v", res.Status)
+	}
+
+	contentType := res.Header.Get("Content-Type")
+	if !strings.Contains(contentType, "image/svg+xml") {
+		t.Errorf("Expected image/svg+xml content type, got %s", contentType)
 	}
 }
