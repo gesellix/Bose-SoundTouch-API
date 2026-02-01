@@ -77,7 +77,8 @@ When you're done with the virtual environment, you can type `deactivate` to leav
      --name soundcork \
      soundcork
    ```
-   Note: If you change the `PORT` environment variable, remember to update the `-p` port mapping as well.
+
+3. Note: If you change the `PORT` environment variable, remember to update the `-p` port mapping as well. For example, if you use `-e PORT=8080`, you should use `-p 8080:8080`.
 
 #### Using a Virtual Environment
 

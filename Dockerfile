@@ -1,13 +1,22 @@
-# Use an official Python runtime as a parent image
+# Stage 1: Build Go binary
+FROM golang:1.25.5-alpine AS go-builder
+WORKDIR /src
+COPY soundcork-go/go.mod soundcork-go/go.sum ./
+RUN go mod download
+COPY soundcork-go/ ./
+RUN CGO_ENABLED=0 go build -o /app/soundcork-go-bin soundcork-go/main.go
+
+# Stage 2: Build final image
 FROM python:3.12-slim
 
 # Set environment variables
-# These can be overridden at runtime
 ENV BASE_URL=""
 ENV DATA_DIR="/data"
 ENV PORT=8000
+ENV BIND_ADDR="0.0.0.0"
+ENV PYTHON_BACKEND_URL="http://localhost:8001"
 
-# Expose the port the app runs on
+# Expose the primary port
 EXPOSE ${PORT}
 
 # Create a directory for data persistence
@@ -16,19 +25,18 @@ RUN mkdir -p /data
 # Set the working directory in the container
 WORKDIR /app
 
-# Install system dependencies if needed (none identified so far)
-# RUN apt-get update && apt-get install -y --no-install-recommends gcc && rm -rf /var/lib/apt/lists/*
-
-# Copy the requirements file into the container
+# Copy requirements and install Python dependencies
 COPY requirements.txt .
-
-# Install any needed packages specified in requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the rest of the application code into the container
+# Copy Go binary from builder
+COPY --from=go-builder /app/soundcork-go-bin .
+
+# Copy the rest of the application code
 COPY . .
 
-# Run the application
-# We use fastapi run to match the package structure and benefit from FastAPI's production optimizations
-# We use exec to ensure the application receives signals (like SIGTERM) as PID 1
-CMD ["sh", "-c", "exec fastapi run soundcork/main.py --port ${PORT} --host 0.0.0.0"]
+# Ensure entrypoint is executable
+RUN chmod +x entrypoint.sh
+
+# Run both Go and Python services
+CMD ["./entrypoint.sh"]
