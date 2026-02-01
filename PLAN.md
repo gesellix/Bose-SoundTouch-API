@@ -46,11 +46,11 @@ This allows for incremental porting and testing without breaking existing functi
 
 **Goal**: Port the service registry and external API integrations.
 
-- [ ] Port `soundcork/bmx.py`:
-    - Implement TuneIn XML/OPML parsing.
-    - Implement `tunein_playback` and `tunein_podcast_info` logic.
-- [ ] Port `bmx_services.json` logic.
-- [ ] Implement the `/v1/services` and `/v1/playback` endpoints in Go.
+- [x] Port `soundcork/bmx.py`:
+    - [x] Implement TuneIn XML/OPML parsing.
+    - [x] Implement `tunein_playback` and `tunein_podcast_info` logic.
+- [x] Port `bmx_services.json` logic.
+- [x] Implement the `/v1/services` and `/v1/playback` endpoints in Go.
 - [ ] Verify that streaming still works on physical speakers.
 
 ## Phase 4: Datastore & Marge (Speaker Communication) (Week 3)

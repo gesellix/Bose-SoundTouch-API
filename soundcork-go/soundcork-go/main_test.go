@@ -1,10 +1,12 @@
 package main
 
 import (
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"strings"
 	"testing"
 
@@ -26,6 +28,23 @@ func setupRouter(targetURL string) *chi.Mux {
 	r.Get("/media/*", func(w http.ResponseWriter, r *http.Request) {
 		fs := http.StripPrefix("/media/", http.FileServer(mediaDir))
 		fs.ServeHTTP(w, r)
+	})
+
+	// Setup BMX for tests
+	r.Route("/bmx", func(r chi.Router) {
+		r.Get("/registry/v1/services", func(w http.ResponseWriter, r *http.Request) {
+			data, err := os.ReadFile("../../soundcork/bmx_services.json")
+			if err != nil {
+				http.Error(w, "Failed to read services", http.StatusInternalServerError)
+				return
+			}
+			baseURL := "http://localhost:8000"
+			content := string(data)
+			content = strings.ReplaceAll(content, "{BMX_SERVER}", baseURL)
+			content = strings.ReplaceAll(content, "{MEDIA_SERVER}", baseURL+"/media")
+			w.Header().Set("Content-Type", "application/json")
+			w.Write([]byte(content))
+		})
 	})
 
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
@@ -107,5 +126,40 @@ func TestStaticMedia(t *testing.T) {
 	contentType := res.Header.Get("Content-Type")
 	if !strings.Contains(contentType, "image/svg+xml") {
 		t.Errorf("Expected image/svg+xml content type, got %s", contentType)
+	}
+}
+
+func TestBMXServices(t *testing.T) {
+	r := setupRouter("http://localhost:8001")
+	ts := httptest.NewServer(r)
+	defer ts.Close()
+
+	res, err := http.Get(ts.URL + "/bmx/registry/v1/services")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusOK {
+		t.Errorf("Expected status OK, got %v", res.Status)
+	}
+
+	body, _ := io.ReadAll(res.Body)
+	var response map[string]interface{}
+	if err := json.Unmarshal(body, &response); err != nil {
+		t.Fatalf("Failed to unmarshal response: %v", err)
+	}
+
+	if _, ok := response["bmx_services"]; !ok {
+		t.Error("Response missing bmx_services field")
+	}
+
+	// Verify placeholder replacement
+	bodyStr := string(body)
+	if strings.Contains(bodyStr, "{BMX_SERVER}") {
+		t.Error("Response still contains {BMX_SERVER} placeholder")
+	}
+	if strings.Contains(bodyStr, "{MEDIA_SERVER}") {
+		t.Error("Response still contains {MEDIA_SERVER} placeholder")
 	}
 }

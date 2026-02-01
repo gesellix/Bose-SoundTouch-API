@@ -1,13 +1,16 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"os"
+	"strings"
 
+	"github.com/deborahgu/soundcork/internal/bmx"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 )
@@ -59,6 +62,75 @@ func main() {
 	r.Get("/media/*", func(w http.ResponseWriter, r *http.Request) {
 		fs := http.StripPrefix("/media/", http.FileServer(mediaDir))
 		fs.ServeHTTP(w, r)
+	})
+
+	// Phase 3: BMX endpoints
+	r.Route("/bmx", func(r chi.Router) {
+		r.Get("/registry/v1/services", func(w http.ResponseWriter, r *http.Request) {
+			// Read and process bmx_services.json
+			data, err := os.ReadFile("soundcork/bmx_services.json")
+			if err != nil {
+				http.Error(w, "Failed to read services", http.StatusInternalServerError)
+				return
+			}
+
+			baseURL := os.Getenv("BASE_URL")
+			if baseURL == "" {
+				baseURL = "http://localhost:8000" // Default for local dev
+			}
+
+			content := string(data)
+			content = strings.ReplaceAll(content, "{BMX_SERVER}", baseURL)
+			content = strings.ReplaceAll(content, "{MEDIA_SERVER}", baseURL+"/media")
+
+			w.Header().Set("Content-Type", "application/json")
+			w.Write([]byte(content))
+		})
+
+		r.Get("/tunein/v1/playback/station/{stationID}", func(w http.ResponseWriter, r *http.Request) {
+			stationID := chi.URLParam(r, "stationID")
+			resp, err := bmx.TuneInPlayback(stationID)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(resp)
+		})
+
+		r.Get("/tunein/v1/playback/episodes/{podcastID}", func(w http.ResponseWriter, r *http.Request) {
+			podcastID := chi.URLParam(r, "podcastID")
+			encodedName := r.URL.Query().Get("encoded_name")
+			resp, err := bmx.TuneInPodcastInfo(podcastID, encodedName)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(resp)
+		})
+
+		r.Get("/tunein/v1/playback/episode/{podcastID}", func(w http.ResponseWriter, r *http.Request) {
+			podcastID := chi.URLParam(r, "podcastID")
+			resp, err := bmx.TuneInPlaybackPodcast(podcastID)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(resp)
+		})
+
+		r.Post("/orion/v1/playback/station/{data}", func(w http.ResponseWriter, r *http.Request) {
+			data := chi.URLParam(r, "data")
+			resp, err := bmx.PlayCustomStream(data)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(resp)
+		})
 	})
 
 	// Delegation Logic: Proxy everything else to Python
