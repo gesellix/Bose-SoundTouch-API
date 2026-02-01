@@ -63,6 +63,26 @@ When you're done with the virtual environment, you can type `deactivate` to leav
 
 ### Running
 
+#### Using Docker (Recommended)
+
+1. Build the Docker image:
+   ```sh
+   docker build -t soundcork .
+   ```
+2. Run the container:
+   ```sh
+   docker run -d \
+     -p 8000:8000 \
+     -e PORT=8000 \
+     -e BASE_URL="http://your-host-ip:8000" \
+     -v /path/to/your/data:/data \
+     --name soundcork \
+     soundcork
+   ```
+   Note: If you change the `PORT` environment variable, remember to update the `-p` port mapping as well.
+
+#### Using a Virtual Environment
+
 - To run in test
 	```sh
 	fastapi dev main.py
