@@ -122,6 +122,10 @@ ssh -oHostKeyAlgorithms=ssh-rsa root@<device-ip>
 ```sh
 telnet <device-ip> 23
 ```
+Or via Docker (if you don't have a telnet client installed):
+```sh
+docker run --rm -it alpine:edge ash -c 'apk add -U inetutils-telnet && telnet <device-ip> 23'
+```
 Log in as user `root` (no password).
 
 #### Step 4: Check Current Configuration
