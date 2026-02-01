@@ -86,6 +86,41 @@ func (ds *DataStore) GetDeviceInfo(account, device string) (*models.DeviceInfo, 
 	return deviceInfo, nil
 }
 
+// ListAllDevices returns a list of all devices in all accounts.
+func (ds *DataStore) ListAllDevices() ([]models.DeviceInfo, error) {
+	accounts, err := os.ReadDir(ds.DataDir)
+	if err != nil {
+		return nil, err
+	}
+
+	devices := []models.DeviceInfo{}
+	for _, acc := range accounts {
+		if !acc.IsDir() {
+			continue
+		}
+
+		devicesDir := ds.AccountDevicesDir(acc.Name())
+		deviceEntries, err := os.ReadDir(devicesDir)
+		if err != nil {
+			// Skip accounts with no devices directory or other issues
+			continue
+		}
+
+		for _, dev := range deviceEntries {
+			if !dev.IsDir() {
+				continue
+			}
+
+			info, err := ds.GetDeviceInfo(acc.Name(), dev.Name())
+			if err == nil && info != nil {
+				devices = append(devices, *info)
+			}
+		}
+	}
+
+	return devices, nil
+}
+
 func (ds *DataStore) GetPresets(account string) ([]models.Preset, error) {
 	path := filepath.Join(ds.AccountDir(account), constants.PresetsFile)
 	data, err := os.ReadFile(path)
@@ -114,7 +149,7 @@ func (ds *DataStore) GetPresets(account string) ([]models.Preset, error) {
 		return nil, err
 	}
 
-	var presets []models.Preset
+	presets := []models.Preset{}
 	for _, p := range presetsWrap.Presets {
 		presets = append(presets, models.Preset{
 			ContentItem: models.ContentItem{
@@ -211,7 +246,7 @@ func (ds *DataStore) GetRecents(account string) ([]models.Recent, error) {
 		return nil, err
 	}
 
-	var recents []models.Recent
+	recents := []models.Recent{}
 	for _, r := range recentsWrap.Recents {
 		recents = append(recents, models.Recent{
 			ContentItem: models.ContentItem{

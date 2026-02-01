@@ -11,13 +11,16 @@ import (
 
 	"github.com/deborahgu/soundcork/internal/datastore"
 	"github.com/deborahgu/soundcork/internal/models"
+	"github.com/deborahgu/soundcork/internal/setup"
 	"github.com/gesellix/bose-soundtouch/pkg/discovery"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 )
 
 type Server struct {
-	ds *datastore.DataStore
+	ds        *datastore.DataStore
+	sm        *setup.Manager
+	serverURL string
 }
 
 func main() {
@@ -50,7 +53,24 @@ func main() {
 		dataDir = "data"
 	}
 	ds := datastore.NewDataStore(dataDir)
-	server := &Server{ds: ds}
+
+	serverURL := os.Getenv("SERVER_URL")
+	if serverURL == "" {
+		// Try to guess the server URL
+		hostname, _ := os.Hostname()
+		if hostname == "" {
+			hostname = "localhost"
+		}
+		serverURL = "http://" + hostname + ":" + port
+	}
+
+	sm := setup.NewManager(serverURL)
+
+	server := &Server{
+		ds:        ds,
+		sm:        sm,
+		serverURL: serverURL,
+	}
 
 	// Phase 5: Device Discovery
 	go func() {
@@ -121,6 +141,13 @@ func main() {
 		r.Post("/accounts/{account}/devices/{device}/recents", server.handleMargeAddRecent)
 		r.Post("/accounts/{account}/devices", server.handleMargeAddDevice)
 		r.Delete("/accounts/{account}/devices/{device}", server.handleMargeRemoveDevice)
+	})
+
+	// Phase 7: Setup and Discovery endpoints
+	r.Route("/setup", func(r chi.Router) {
+		r.Get("/devices", server.handleListDiscoveredDevices)
+		r.Get("/summary/{deviceIP}", server.handleGetMigrationSummary)
+		r.Post("/migrate/{deviceIP}", server.handleMigrateDevice)
 	})
 
 	// Delegation Logic: Proxy everything else to Python

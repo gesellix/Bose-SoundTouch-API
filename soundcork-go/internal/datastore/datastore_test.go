@@ -85,3 +85,36 @@ func TestDataStore(t *testing.T) {
 		t.Errorf("Expected account dir %s, got %s", expectedAccountDir, ds.AccountDir(account))
 	}
 }
+
+func TestListAllDevices_Empty(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "soundcork-empty-test-*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	ds := NewDataStore(tempDir)
+
+	// Case 1: DataDir does not exist
+	os.RemoveAll(tempDir)
+	devices, err := ds.ListAllDevices()
+	if err == nil {
+		t.Errorf("Expected error when DataDir does not exist, got nil")
+	}
+	if devices != nil {
+		t.Errorf("Expected nil devices when DataDir does not exist, got %+v", devices)
+	}
+
+	// Case 2: DataDir is empty
+	os.MkdirAll(tempDir, 0755)
+	devices, err = ds.ListAllDevices()
+	if err != nil {
+		t.Errorf("ListAllDevices failed on empty dir: %v", err)
+	}
+	if devices == nil {
+		t.Errorf("Expected empty slice (not nil) when no devices exist")
+	}
+	if len(devices) != 0 {
+		t.Errorf("Expected 0 devices, got %d", len(devices))
+	}
+}

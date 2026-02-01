@@ -97,9 +97,12 @@ This allows for incremental porting and testing without breaking existing functi
 
 - [x] Implement an automated "Setup" feature in `soundcork-go`:
     - [x] Create a standalone `setup-speaker.sh` script for easy migration.
-    - [ ] Integrate SSH/SCP (via Go `ssh` library) into the Go service for a programmatic approach.
-    - [ ] Auto-discover devices and offer a "Migrate to Soundcork" button.
-- [ ] Build a basic Web UI for monitoring and managing discovered devices.
+    - [x] Integrate SSH/SCP (via Go `ssh` library) into the Go service for a programmatic approach.
+    - [x] Auto-discover devices and offer a "Migrate to Soundcork" button.
+- [x] Build a basic Web UI for monitoring and managing discovered devices.
+- [x] Implement migration summary view with SSH check and config comparison.
+    - [x] Improve SSH error reporting and UI feedback for unreachable devices.
+- [x] Refactor Web UI to use external HTML file with Go `embed`.
 
 ---
 

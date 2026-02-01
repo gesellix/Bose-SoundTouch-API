@@ -13,7 +13,11 @@ func TestRootEndpoint(t *testing.T) {
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 
-	res, err := http.Get(ts.URL + "/")
+	client := &http.Client{}
+	req, _ := http.NewRequest("GET", ts.URL+"/", nil)
+	req.Header.Set("Accept", "text/html")
+
+	res, err := client.Do(req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -23,9 +27,44 @@ func TestRootEndpoint(t *testing.T) {
 		t.Errorf("Expected status OK, got %v", res.Status)
 	}
 
+	contentType := res.Header.Get("Content-Type")
+	if !strings.Contains(contentType, "text/html") {
+		t.Errorf("Expected text/html content type, got %s", contentType)
+	}
+
+	body, _ := io.ReadAll(res.Body)
+	if !strings.Contains(string(body), "Soundcork Management") {
+		t.Errorf("Expected body to contain 'Soundcork Management', got %s", string(body))
+	}
+}
+
+func TestRootEndpointJSON(t *testing.T) {
+	r := setupRouter("http://localhost:8001", nil)
+	ts := httptest.NewServer(r)
+	defer ts.Close()
+
+	client := &http.Client{}
+	req, _ := http.NewRequest("GET", ts.URL+"/", nil)
+	req.Header.Set("Accept", "application/json")
+
+	res, err := client.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusOK {
+		t.Errorf("Expected status OK, got %v", res.Status)
+	}
+
+	contentType := res.Header.Get("Content-Type")
+	if !strings.Contains(contentType, "application/json") {
+		t.Errorf("Expected application/json content type, got %s", contentType)
+	}
+
 	body, _ := io.ReadAll(res.Body)
 	expected := `{"Bose": "Can't Brick Us", "service": "Go/Chi"}`
-	if string(body) != expected {
+	if strings.TrimSpace(string(body)) != expected {
 		t.Errorf("Expected body %s, got %s", expected, string(body))
 	}
 }
