@@ -30,27 +30,44 @@ logger = logging.getLogger(__name__)
 
 settings = Settings()
 
+# used for when a timestamp is missing
+default_datestr = "2012-09-19T12:43:00.000+00:00"
+
 
 def source_providers() -> list[SourceProvider]:
-    datestr = "2012-09-19T12:43:00.000+00:00"
     return [
-        SourceProvider(id=i[0], created_on=datestr, name=i[1], updated_on=datestr)
+        SourceProvider(
+            id=i[0], created_on=default_datestr, name=i[1], updated_on=default_datestr
+        )
         for i in enumerate(PROVIDERS, start=1)
     ]
 
 
-def preset_xml(
-    preset: Preset, conf_sources_list: list[ConfiguredSource], datestr: str
-) -> ET.Element:
+def preset_xml(preset: Preset, conf_sources_list: list[ConfiguredSource]) -> ET.Element:
     preset_element = ET.Element("preset")
     preset_element.attrib["buttonNumber"] = preset.id
+
+    try:
+        created_on = datetime.fromtimestamp(
+            int(preset.created_on), timezone.utc
+        ).isoformat()
+    except:
+        created_on = default_datestr
+
+    try:
+        updated_on = datetime.fromtimestamp(
+            int(preset.updated_on), timezone.utc
+        ).isoformat()
+    except:
+        updated_on = default_datestr
+
     ET.SubElement(preset_element, "containerArt").text = preset.container_art
     ET.SubElement(preset_element, "contentItemType").text = preset.type
-    ET.SubElement(preset_element, "createdOn").text = datestr
+    ET.SubElement(preset_element, "createdOn").text = created_on
     ET.SubElement(preset_element, "location").text = preset.location
     ET.SubElement(preset_element, "name").text = preset.name
-    preset_element.append(content_item_source_xml(conf_sources_list, preset, datestr))
-    ET.SubElement(preset_element, "updatedOn").text = datestr
+    preset_element.append(content_item_source_xml(conf_sources_list, preset))
+    ET.SubElement(preset_element, "updatedOn").text = updated_on
     return preset_element
 
 
@@ -59,12 +76,9 @@ def presets_xml(datastore: "DataStore", account: str, device: str) -> ET.Element
 
     presets_list = datastore.get_presets(account, device)
 
-    # We hardcode a date here because we'll never use it, so there's no need for a real date object.
-    datestr = "2012-09-19T12:43:00.000+00:00"
-
     presets_element = ET.Element("presets")
     for preset in presets_list:
-        preset_element = preset_xml(preset, conf_sources_list, datestr)
+        preset_element = preset_xml(preset, conf_sources_list)
         presets_element.append(preset_element)
 
     return presets_element
@@ -100,7 +114,7 @@ def update_preset(
     try:
         matching_src = next(src for src in conf_sources_list if src.id == source_id)
     except StopIteration:
-        raise HTTPException(status_code=400, detail="Invalid account")
+        raise HTTPException(status_code=400, detail=f"Invalid source {source_id}")
     source = matching_src.source_key_type
     source_account = matching_src.source_key_account
 
@@ -122,16 +136,14 @@ def update_preset(
     presets_list[preset_number - 1] = preset_obj
 
     datastore.save_presets(account, device, presets_list)
-    datestr = "2012-09-19T12:43:00.000+00:00"
 
-    preset_element = preset_xml(preset_obj, conf_sources_list, datestr)
+    preset_element = preset_xml(preset_obj, conf_sources_list)
     return preset_element
 
 
 def content_item_source_xml(
     configured_sources: list[ConfiguredSource],
     content_item: ContentItem,
-    datestr: str,
 ) -> ET.Element:
     if content_item.source_id:
         try:
@@ -141,7 +153,7 @@ def content_item_source_xml(
         except StopIteration:
             print(f"invalid source for content_item.source_id {content_item.source_id}")
             raise HTTPException(status_code=400, detail="Invalid source")
-        return configured_source_xml(matching_src, datestr)
+        return configured_source_xml(matching_src)
 
     try:
         matching_src = next(
@@ -158,27 +170,26 @@ def content_item_source_xml(
             f"invalid source for source key {content_item.source} account {content_item.source_account}"
         )
         raise HTTPException(status_code=400, detail="Invalid source")
-    return configured_source_xml(matching_src, datestr)
+    return configured_source_xml(matching_src)
 
 
 def all_sources_xml(
     configured_sources: list[ConfiguredSource],
-    datestr: str,
 ) -> ET.Element:
 
     sources_elem = ET.Element("sources")
 
     for conf_source in configured_sources:
-        sources_elem.append(configured_source_xml(conf_source, datestr))
+        sources_elem.append(configured_source_xml(conf_source))
 
     return sources_elem
 
 
-def configured_source_xml(conf_source: ConfiguredSource, datestr: str) -> ET.Element:
+def configured_source_xml(conf_source: ConfiguredSource) -> ET.Element:
     source = ET.Element("source")
     source.attrib["id"] = conf_source.id
     source.attrib["type"] = "Audio"
-    ET.SubElement(source, "createdOn").text = datestr
+    ET.SubElement(source, "createdOn").text = default_datestr
     credential = ET.SubElement(source, "credential")
     credential.text = conf_source.secret
     credential.attrib["type"] = "token"
@@ -188,7 +199,7 @@ def configured_source_xml(conf_source: ConfiguredSource, datestr: str) -> ET.Ele
     )
     ET.SubElement(source, "sourcename").text = conf_source.display_name
     ET.SubElement(source, "sourcesettings")
-    ET.SubElement(source, "updatedOn").text = datestr
+    ET.SubElement(source, "updatedOn").text = default_datestr
     ET.SubElement(source, "username").text = conf_source.source_key_account
 
     return source
@@ -199,26 +210,28 @@ def recents_xml(datastore: "DataStore", account: str, device: str) -> ET.Element
 
     recents_list = datastore.get_recents(account, device)
 
-    # We hardcode a date here because we'll never use it, so there's no need for a real date object.
-    datestr = "2012-09-19T12:43:00.000+00:00"
-
     recents_element = ET.Element("recents")
     for recent in recents_list:
         lastplayed = datetime.fromtimestamp(
             int(recent.utc_time), timezone.utc
         ).isoformat()
 
+        try:
+            created_on = datetime.fromtimestamp(
+                int(recent.created_on), timezone.utc
+            ).isoformat()
+        except:
+            created_on = default_datestr
+
         recent_element = ET.SubElement(recents_element, "recent")
         recent_element.attrib["id"] = recent.id
         ET.SubElement(recent_element, "contentItemType").text = recent.type
-        ET.SubElement(recent_element, "createdOn").text = datestr
+        ET.SubElement(recent_element, "createdOn").text = created_on
         ET.SubElement(recent_element, "lastplayedat").text = lastplayed
         ET.SubElement(recent_element, "location").text = recent.location
         ET.SubElement(recent_element, "name").text = recent.name
-        recent_element.append(
-            content_item_source_xml(conf_sources_list, recent, datestr)
-        )
-        ET.SubElement(recent_element, "updatedOn").text = datestr
+        recent_element.append(content_item_source_xml(conf_sources_list, recent))
+        ET.SubElement(recent_element, "updatedOn").text = lastplayed
 
     return recents_element
 
@@ -256,13 +269,9 @@ def add_recent(
     try:
         matching_src = next(src for src in conf_sources_list if src.id == source_id)
     except StopIteration:
-        raise HTTPException(status_code=400, detail="Invalid account")
+        raise HTTPException(status_code=400, detail=f"Invalid source {source_id}")
     source = matching_src.source_key_type
     source_account = matching_src.source_key_account
-
-    # We hardcode a date here because we'll never use it, so there's no need for a real date object.
-    datestr = "2012-09-19T12:43:00.000+00:00"
-    created_on = datestr
 
     # see if this item is already in the recents list
     matching_recent = next(
@@ -320,10 +329,8 @@ def add_recent(
     ET.SubElement(recent_element, "lastplayedat").text = lastplayed
     ET.SubElement(recent_element, "location").text = recent_obj.location
     ET.SubElement(recent_element, "name").text = recent_obj.name
-    recent_element.append(
-        content_item_source_xml(conf_sources_list, recent_obj, datestr)
-    )
-    ET.SubElement(recent_element, "updatedOn").text = created_on
+    recent_element.append(content_item_source_xml(conf_sources_list, recent_obj))
+    ET.SubElement(recent_element, "updatedOn").text = lastplayed
 
     return recent_element
 
@@ -341,8 +348,6 @@ def provider_settings_xml(account: str) -> ET.Element:
 
 
 def account_full_xml(account: str, datastore: "DataStore") -> ET.Element:
-    datestr = "2012-09-19T12:43:00.000+00:00"
-
     account_elem = ET.Element("account")
     account_elem.attrib["id"] = account
     ET.SubElement(account_elem, "accountStatus").text = "OK"
@@ -364,7 +369,7 @@ def account_full_xml(account: str, datastore: "DataStore") -> ET.Element:
         ET.SubElement(attached_product_elem, "serialnumber").text = (
             device_info.product_serial_number
         )
-        ET.SubElement(device_elem, "createdOn").text = datestr
+        ET.SubElement(device_elem, "createdOn").text = default_datestr
 
         ET.SubElement(device_elem, "firmwareVersion").text = (
             device_info.firmware_version
@@ -376,7 +381,7 @@ def account_full_xml(account: str, datastore: "DataStore") -> ET.Element:
         ET.SubElement(device_elem, "serialnumber").text = (
             device_info.device_serial_number
         )
-        ET.SubElement(device_elem, "updatedOn").text = datestr
+        ET.SubElement(device_elem, "updatedOn").text = default_datestr
 
     ET.SubElement(account_elem, "mode").text = "global"
 
@@ -385,9 +390,7 @@ def account_full_xml(account: str, datastore: "DataStore") -> ET.Element:
     ET.SubElement(account_elem, "preferredLanguage").text = "en"
     account_elem.append(provider_settings_xml(account))
     account_elem.append(
-        all_sources_xml(
-            datastore.get_configured_sources(account, last_device_id), datestr
-        )
+        all_sources_xml(datastore.get_configured_sources(account, last_device_id))
     )
 
     return account_elem
