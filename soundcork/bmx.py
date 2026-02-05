@@ -98,7 +98,7 @@ def tunein_playback(station_id: str) -> BmxPlaybackResponse:
 
 def tunein_podcast_info(podcast_id: str, encoded_name: str) -> BmxPodcastInfoResponse:
 
-    name = base64.b64decode(encoded_name)
+    name = base64.urlsafe_b64decode(encoded_name)
     track = Track(
         links={"bmx_track": {"href": f"/v1/playback/episode/{podcast_id}"}},
         is_selected=False,
@@ -199,7 +199,7 @@ def tunein_playback_podcast(podcast_id: str) -> BmxPlaybackResponse:
 def play_custom_stream(data: str) -> BmxPlaybackResponse:
     # data comes in as base64-encoded json with fields
     # streamUrl, imageUrl, and name
-    json_str = base64.b64decode(data)
+    json_str = base64.urlsafe_b64decode(data)
     json_obj = json.loads(json_str)
     stream_list = [
         Stream(
