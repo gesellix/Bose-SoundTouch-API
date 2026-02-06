@@ -102,6 +102,12 @@ func (s *Server) handleProxyRequest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	proxy.ModifyResponse = func(res *http.Response) error {
+		// Generic Header Preservation
+		if etags, ok := res.Header["Etag"]; ok {
+			delete(res.Header, "Etag")
+			res.Header["ETag"] = etags
+		}
+
 		lp.LogResponse(res)
 		return nil
 	}
@@ -166,11 +172,15 @@ func main() {
 
 	pyProxy := httputil.NewSingleHostReverseProxy(target)
 	pyProxy.ModifyResponse = func(res *http.Response) error {
-		// Ensure ETag is uppercase 'T'
+		// Generic Header Preservation:
+		// Go's net/http canonicalizes headers (e.g., ETag becomes Etag).
+		// We ensure ETag specifically uses uppercase 'T' as some Bose devices are case-sensitive.
 		if etags, ok := res.Header["Etag"]; ok {
 			delete(res.Header, "Etag")
 			res.Header["ETag"] = etags
 		}
+		// Also restore other potentially sensitive headers if needed, but for now we focus on ETag
+		// as it's the most common culprit.
 
 		currentLp := proxy.NewLoggingProxy(target.String(), server.proxyRedact)
 		currentLp.LogBody = server.proxyLogBody

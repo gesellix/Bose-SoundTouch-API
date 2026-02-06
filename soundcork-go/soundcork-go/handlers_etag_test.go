@@ -182,6 +182,8 @@ func TestMargeETags(t *testing.T) {
 		target, _ := url.Parse(backend.URL)
 		pyProxy := httputil.NewSingleHostReverseProxy(target)
 		pyProxy.ModifyResponse = func(res *http.Response) error {
+			// Generic Header Restoration:
+			// Move Etag to ETag
 			if etags, ok := res.Header["Etag"]; ok {
 				delete(res.Header, "Etag")
 				res.Header["ETag"] = etags
@@ -198,6 +200,64 @@ func TestMargeETags(t *testing.T) {
 
 		if _, ok := resp.Header["ETag"]; !ok {
 			t.Errorf("ModifyResponse did not normalize ETag casing. Headers: %v", resp.Header)
+		}
+
+		// Negative check: ensure 'Etag' is gone
+		if _, ok := resp.Header["Etag"]; ok {
+			t.Error("Etag header still present after normalization")
+		}
+	})
+
+	t.Run("X-Bose-Token Casing Test", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		// Test that using direct map access on w.Header() preserves casing
+		w.Header()["X-BOSE-TOKEN"] = []string{"token"}
+
+		found := false
+		for k := range w.Header() {
+			if k == "X-BOSE-TOKEN" {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("Expected exact 'X-BOSE-TOKEN' header in recorder, but it was normalized: %v", w.Header())
+		}
+	})
+
+	t.Run("Golang Header Normalization Documentation", func(t *testing.T) {
+		// This test documents how Go's http.Header.Set/Get canonicalizes keys.
+		h := make(http.Header)
+
+		// 1. Set canonicalizes to "Etag" (Standard Go behavior)
+		h.Set("ETag", "v1")
+		if _, ok := h["Etag"]; !ok {
+			t.Errorf("Expected key 'Etag' in map after Set('ETag'), but got: %v", h)
+		}
+		if _, ok := h["ETag"]; ok {
+			// In Go's map, "ETag" and "Etag" are different keys.
+			// Set() uses CanonicalHeaderKey which produces "Etag" (lowercase 't').
+			t.Errorf("Did not expect exact key 'ETag' in map after Set('ETag') because Go canonicalizes to 'Etag'")
+		}
+
+		// 2. Get() also canonicalizes the key before lookup
+		if val := h.Get("ETAG"); val != "v1" {
+			t.Errorf("Expected Get('ETAG') to find 'v1' due to canonicalization, got %q", val)
+		}
+
+		// 3. Direct map access bypasses normalization
+		h["X-Bose-Token"] = []string{"v2"}
+		if _, ok := h["X-Bose-Token"]; !ok {
+			t.Error("Expected exact key 'X-Bose-Token' to be present")
+		}
+		// However, Get() will still look for "X-Bose-Token" (canonicalized)
+		// Wait, CanonicalHeaderKey("X-Bose-Token") is "X-Bose-Token" anyway.
+		// Let's try something that changes.
+		h["etag"] = []string{"v3"}
+		if h.Get("etag") != "v1" {
+			// Get("etag") -> Get(Canonical("etag")) -> Get("Etag") -> returns "v1"
+			// It does NOT find "v3" because "etag" != "Etag" in the map.
+			t.Errorf("Get('etag') found %q, but we expected it to find the canonical 'Etag' value 'v1'", h.Get("etag"))
 		}
 	})
 }

@@ -78,6 +78,9 @@ func (lp *LoggingProxy) LogResponse(r *http.Response) {
 
 func formatHeaders(h http.Header, redact bool) string {
 	var sb strings.Builder
+	// In Go, http.Header is a map[string][]string.
+	// Iterating over the map directly allows us to see the actual keys
+	// stored in the map, which might not be canonical if set directly.
 	for k, vv := range h {
 		val := strings.Join(vv, ", ")
 		if redact && isSensitive(k) {
