@@ -3,10 +3,12 @@ package main
 import (
 	"context"
 	"log"
+	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/deborahgu/soundcork/internal/datastore"
@@ -21,6 +23,7 @@ type Server struct {
 	ds          *datastore.DataStore
 	sm          *setup.Manager
 	serverURL   string
+	proxyURL    string
 	discovering bool
 }
 
@@ -55,6 +58,44 @@ func (s *Server) discoverDevices() {
 			log.Printf("Failed to save device info: %v", err)
 		}
 	}
+}
+
+func (s *Server) handleProxyRequest(w http.ResponseWriter, r *http.Request) {
+	targetURLStr := strings.TrimPrefix(r.URL.Path, "/proxy/")
+	if targetURLStr == "" {
+		http.Error(w, "Target URL is required", http.StatusBadRequest)
+		return
+	}
+
+	// Reconstruct original URL (it might have lost its double slashes in the path)
+	if !strings.HasPrefix(targetURLStr, "http://") && !strings.HasPrefix(targetURLStr, "https://") {
+		// Try to fix it if it looks like http:/...
+		if strings.HasPrefix(targetURLStr, "http:/") {
+			targetURLStr = "http://" + strings.TrimPrefix(targetURLStr, "http:/")
+		} else if strings.HasPrefix(targetURLStr, "https:/") {
+			targetURLStr = "https://" + strings.TrimPrefix(targetURLStr, "https:/")
+		}
+	}
+
+	target, err := url.Parse(targetURLStr)
+	if err != nil {
+		http.Error(w, "Invalid target URL: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	log.Printf("Proxying request: %s %s -> %s", r.Method, r.URL.Path, target.String())
+
+	proxy := httputil.NewSingleHostReverseProxy(target)
+	// Update director to set the correct host and path
+	originalDirector := proxy.Director
+	proxy.Director = func(req *http.Request) {
+		originalDirector(req)
+		req.Host = target.Host
+		req.URL.Path = target.Path
+		req.URL.RawQuery = r.URL.RawQuery
+	}
+
+	proxy.ServeHTTP(w, r)
 }
 
 func main() {
@@ -105,6 +146,37 @@ func main() {
 		sm:        sm,
 		serverURL: serverURL,
 	}
+
+	proxyPort := os.Getenv("PROXY_PORT")
+	if proxyPort == "" {
+		proxyPort = "8080"
+	}
+	proxyAddr := bindAddr + ":" + proxyPort
+	if bindAddr == "" {
+		proxyAddr = ":" + proxyPort
+	}
+
+	// Guess proxyURL
+	server.proxyURL = os.Getenv("PROXY_URL")
+	if server.proxyURL == "" {
+		u, _ := url.Parse(serverURL)
+		host, _, _ := net.SplitHostPort(u.Host)
+		if host == "" {
+			host = u.Host
+		}
+		server.proxyURL = "http://" + host + ":" + proxyPort
+	}
+
+	// Start Proxy Server
+	go func() {
+		proxyRouter := chi.NewRouter()
+		proxyRouter.Use(middleware.Logger)
+		proxyRouter.Get("/proxy/*", server.handleProxyRequest)
+		log.Printf("Proxy service starting on %s", proxyAddr)
+		if err := http.ListenAndServe(proxyAddr, proxyRouter); err != nil {
+			log.Printf("Proxy server error: %v", err)
+		}
+	}()
 
 	// Phase 5: Device Discovery
 	go func() {
@@ -163,6 +235,7 @@ func main() {
 		r.Get("/summary/{deviceIP}", server.handleGetMigrationSummary)
 		r.Post("/migrate/{deviceIP}", server.handleMigrateDevice)
 		r.Post("/ensure-remote-services/{deviceIP}", server.handleEnsureRemoteServices)
+		r.Post("/backup/{deviceIP}", server.handleBackupConfig)
 	})
 
 	// Delegation Logic: Proxy everything else to Python

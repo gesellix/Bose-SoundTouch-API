@@ -33,6 +33,7 @@ func (s *Server) handleGetSettings(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{
 		"server_url": s.serverURL,
+		"proxy_url":  s.proxyURL,
 	})
 }
 
@@ -61,8 +62,16 @@ func (s *Server) handleGetMigrationSummary(w http.ResponseWriter, r *http.Reques
 	}
 
 	targetURL := r.URL.Query().Get("target_url")
+	proxyURL := r.URL.Query().Get("proxy_url")
 
-	summary, err := s.sm.GetMigrationSummary(deviceIP, targetURL)
+	options := make(map[string]string)
+	for k, v := range r.URL.Query() {
+		if len(v) > 0 && (k == "marge" || k == "stats" || k == "sw_update" || k == "bmx") {
+			options[k] = v[0]
+		}
+	}
+
+	summary, err := s.sm.GetMigrationSummary(deviceIP, targetURL, proxyURL, options)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -75,33 +84,69 @@ func (s *Server) handleGetMigrationSummary(w http.ResponseWriter, r *http.Reques
 func (s *Server) handleMigrateDevice(w http.ResponseWriter, r *http.Request) {
 	deviceIP := chi.URLParam(r, "deviceIP")
 	if deviceIP == "" {
-		http.Error(w, "Device IP is required", http.StatusBadRequest)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]interface{}{"ok": false, "message": "Device IP is required"})
 		return
 	}
 
 	targetURL := r.URL.Query().Get("target_url")
+	proxyURL := r.URL.Query().Get("proxy_url")
 
-	if err := s.sm.MigrateSpeaker(deviceIP, targetURL); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	options := make(map[string]string)
+	for k, v := range r.URL.Query() {
+		if len(v) > 0 && (k == "marge" || k == "stats" || k == "sw_update" || k == "bmx") {
+			options[k] = v[0]
+		}
+	}
+
+	if err := s.sm.MigrateSpeaker(deviceIP, targetURL, proxyURL, options); err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]interface{}{"ok": false, "message": err.Error()})
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.Write([]byte(`{"ok": true, "message": "Migration started"}`))
+	json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "message": "Migration started"})
 }
 
 func (s *Server) handleEnsureRemoteServices(w http.ResponseWriter, r *http.Request) {
 	deviceIP := chi.URLParam(r, "deviceIP")
 	if deviceIP == "" {
-		http.Error(w, "Device IP is required", http.StatusBadRequest)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]interface{}{"ok": false, "message": "Device IP is required"})
 		return
 	}
 
 	if err := s.sm.EnsureRemoteServices(deviceIP); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]interface{}{"ok": false, "message": err.Error()})
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.Write([]byte(`{"ok": true, "message": "Remote services ensured"}`))
+	json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "message": "Remote services ensured"})
+}
+
+func (s *Server) handleBackupConfig(w http.ResponseWriter, r *http.Request) {
+	deviceIP := chi.URLParam(r, "deviceIP")
+	if deviceIP == "" {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]interface{}{"ok": false, "message": "Device IP is required"})
+		return
+	}
+
+	if err := s.sm.BackupConfig(deviceIP); err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]interface{}{"ok": false, "message": err.Error()})
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "message": "Backup created"})
 }

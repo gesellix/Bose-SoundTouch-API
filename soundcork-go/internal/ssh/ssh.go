@@ -2,6 +2,8 @@ package ssh
 
 import (
 	"fmt"
+	"io"
+	"strings"
 	"time"
 
 	"golang.org/x/crypto/ssh"
@@ -105,15 +107,34 @@ func (c *Client) UploadContent(content []byte, remotePath string) error {
 		return fmt.Errorf("failed to get stdin pipe: %v", err)
 	}
 
-	go func() {
-		defer stdin.Close()
-		stdin.Write(content)
-	}()
+	// Capture stderr to get better error messages
+	stderr, err := session.StderrPipe()
+	if err != nil {
+		return fmt.Errorf("failed to get stderr pipe: %v", err)
+	}
 
 	// Read content from stdin and write to the remote file
 	cmd := fmt.Sprintf("cat > %s", remotePath)
-	if err := session.Run(cmd); err != nil {
-		return fmt.Errorf("failed to upload content: %v", err)
+
+	// Start the command
+	if err := session.Start(cmd); err != nil {
+		return fmt.Errorf("failed to start upload command: %v", err)
+	}
+
+	// Write content and close stdin
+	_, err = stdin.Write(content)
+	stdin.Close()
+	if err != nil {
+		return fmt.Errorf("failed to write content to stdin: %v", err)
+	}
+
+	// Read stderr in case of failure
+	stderrBuf := new(strings.Builder)
+	go io.Copy(stderrBuf, stderr)
+
+	// Wait for the command to finish
+	if err := session.Wait(); err != nil {
+		return fmt.Errorf("failed to finish upload: %v (stderr: %s)", err, stderrBuf.String())
 	}
 
 	return nil

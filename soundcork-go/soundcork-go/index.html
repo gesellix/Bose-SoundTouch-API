@@ -31,7 +31,12 @@
         <div style="margin-bottom: 10px;">
             <label for="target-domain">Target Domain:</label>
             <input type="text" id="target-domain" placeholder="http://localhost:8000" style="width: 300px;">
-            <span style="font-size: 0.8em; color: #666;">(This URL will be written to the speaker's config)</span>
+            <span style="font-size: 0.8em; color: #666;">(This URL will be used for standard services)</span>
+        </div>
+        <div style="margin-bottom: 10px;">
+            <label for="proxy-domain">Proxy Domain:</label>
+            <input type="text" id="proxy-domain" placeholder="http://localhost:8080" style="width: 300px;">
+            <span style="font-size: 0.8em; color: #666;">(This URL will be used to proxy upstream Bose services)</span>
         </div>
     </div>
 
@@ -40,7 +45,62 @@
     <div id="migration-summary" class="summary-box">
         <h3>Migration Summary for <span id="summary-ip"></span></h3>
         <p>SSH Connection: <span id="ssh-status"></span></p>
+        <p id="original-config-status" style="display: none;">Backup: ✅ Found .original config at <code>/opt/Bose/etc/SoundTouchSdkPrivateCfg.xml.original</code> <button onclick="toggleOriginalConfig()">Show Original Config</button></p>
+        <p id="no-original-config-status" style="display: none;">Backup: ❌ Not found <button id="backup-config-btn">Backup Config Now</button></p>
         <p>Remote Services Enabled: <span id="remote-services-status"></span> <span id="remote-services-found" style="font-size: 0.8em; color: #666;"></span></p>
+
+        <div id="original-config-pane" style="display: none; margin-bottom: 20px;">
+            <span class="config-header">Original Config (Backup)</span>
+            <pre id="original-config-content"></pre>
+        </div>
+
+        <div id="service-options" style="margin-bottom: 20px; display: none;">
+            <h4>Service Implementations</h4>
+            <table>
+                <tr><th>Service</th><th>Original URL</th><th>Implementation</th></tr>
+                <tr>
+                    <td>Marge (Streaming)</td>
+                    <td id="orig-marge">loading...</td>
+                    <td>
+                        <select id="opt-marge" onchange="refreshSummary()">
+                            <option value="soundcork">Soundcork (Go/Python)</option>
+                            <option value="original">Original (Proxy via soundcork-go)</option>
+                        </select>
+                    </td>
+                </tr>
+                <tr>
+                    <td>Stats</td>
+                    <td id="orig-stats">loading...</td>
+                    <td>
+                        <select id="opt-stats" onchange="refreshSummary()">
+                            <option value="soundcork">Soundcork (Go/Python)</option>
+                            <option value="original">Original (Proxy via soundcork-go)</option>
+                        </select>
+                    </td>
+                </tr>
+                <tr>
+                    <td>Software Update</td>
+                    <td id="orig-sw_update">loading...</td>
+                    <td>
+                        <select id="opt-sw_update" onchange="refreshSummary()">
+                            <option value="soundcork">Soundcork (Go/Python)</option>
+                            <option value="original">Original (Proxy via soundcork-go)</option>
+                        </select>
+                    </td>
+                </tr>
+                <tr>
+                    <td>BMX (Registry)</td>
+                    <td id="orig-bmx">loading...</td>
+                    <td>
+                        <select id="opt-bmx" onchange="refreshSummary()">
+                            <option value="soundcork">Soundcork (Go/Python)</option>
+                            <option value="original">Original (Proxy via soundcork-go)</option>
+                        </select>
+                    </td>
+                </tr>
+            </table>
+        </div>
+
         <div class="diff-container">
             <div class="diff-pane">
                 <span class="config-header">Current Config (on Speaker)</span>
@@ -65,6 +125,9 @@
                 const settings = await response.json();
                 if (settings.server_url) {
                     document.getElementById('target-domain').value = settings.server_url;
+                }
+                if (settings.proxy_url) {
+                    document.getElementById('proxy-domain').value = settings.proxy_url;
                 }
             } catch (error) {
                 console.error('Failed to fetch settings', error);
@@ -158,13 +221,27 @@
                 return;
             }
             const targetUrl = document.getElementById('target-domain').value;
+            const proxyUrl = document.getElementById('proxy-domain').value;
+
+            const opts = {
+                marge: document.getElementById('opt-marge').value,
+                stats: document.getElementById('opt-stats').value,
+                sw_update: document.getElementById('opt-sw_update').value,
+                bmx: document.getElementById('opt-bmx').value
+            };
+
             const statusDiv = document.getElementById('status');
             statusDiv.style.display = 'block';
             statusDiv.style.backgroundColor = '#ffffcc';
             statusDiv.innerHTML = 'Fetching summary for ' + ip + '...';
 
+            let query = '?target_url=' + encodeURIComponent(targetUrl) + '&proxy_url=' + encodeURIComponent(proxyUrl);
+            for (let k in opts) {
+                query += '&' + k + '=' + encodeURIComponent(opts[k]);
+            }
+
             try {
-                const response = await fetch('/setup/summary/' + ip + '?target_url=' + encodeURIComponent(targetUrl));
+                const response = await fetch('/setup/summary/' + ip + query);
                 if (!response.ok) {
                     const errorText = await response.text();
                     throw new Error(errorText);
@@ -186,6 +263,21 @@
 
                 document.getElementById('ssh-status').innerText = summary.ssh_success ? '✅ Success' : '❌ Failed';
                 document.getElementById('ssh-status').style.color = summary.ssh_success ? 'green' : 'red';
+
+                document.getElementById('original-config-status').style.display = summary.original_config ? 'block' : 'none';
+                document.getElementById('no-original-config-status').style.display = summary.original_config ? 'none' : 'block';
+                document.getElementById('original-config-content').innerText = summary.original_config || '';
+                document.getElementById('original-config-pane').style.display = 'none';
+
+                if (summary.parsed_current_config) {
+                    document.getElementById('service-options').style.display = 'block';
+                    document.getElementById('orig-marge').innerText = summary.parsed_current_config.margeServerUrl;
+                    document.getElementById('orig-stats').innerText = summary.parsed_current_config.statsServerUrl;
+                    document.getElementById('orig-sw_update').innerText = summary.parsed_current_config.swUpdateUrl;
+                    document.getElementById('orig-bmx').innerText = summary.parsed_current_config.bmxRegistryUrl;
+                } else {
+                    document.getElementById('service-options').style.display = 'none';
+                }
 
                 const remoteStatus = document.getElementById('remote-services-status');
                 const remoteFound = document.getElementById('remote-services-found');
@@ -220,11 +312,22 @@
                 remoteBtn.onclick = () => ensureRemoteServices(ip);
                 remoteBtn.disabled = !summary.ssh_success;
 
+                const backupBtn = document.getElementById('backup-config-btn');
+                backupBtn.onclick = () => backupConfig(ip);
+                backupBtn.disabled = !summary.ssh_success || !!summary.original_config;
+
                 document.getElementById('migration-summary').style.display = 'block';
                 document.getElementById('migration-summary').scrollIntoView();
             } catch (error) {
                 statusDiv.style.backgroundColor = '#ffcccc';
                 statusDiv.innerHTML = 'Error fetching summary for ' + ip + ': ' + error;
+            }
+        }
+
+        function refreshSummary() {
+            const ip = document.getElementById('summary-ip').innerText;
+            if (ip) {
+                showSummary(ip);
             }
         }
 
@@ -234,6 +337,15 @@
                 return;
             }
             const targetUrl = document.getElementById('target-domain').value;
+            const proxyUrl = document.getElementById('proxy-domain').value;
+
+            const opts = {
+                marge: document.getElementById('opt-marge').value,
+                stats: document.getElementById('opt-stats').value,
+                sw_update: document.getElementById('opt-sw_update').value,
+                bmx: document.getElementById('opt-bmx').value
+            };
+
             const summaryDiv = document.getElementById('migration-summary');
             summaryDiv.style.display = 'none';
 
@@ -242,8 +354,13 @@
             statusDiv.style.backgroundColor = '#ffffcc';
             statusDiv.innerHTML = 'Migrating ' + ip + '...';
 
+            let query = '?target_url=' + encodeURIComponent(targetUrl) + '&proxy_url=' + encodeURIComponent(proxyUrl);
+            for (let k in opts) {
+                query += '&' + k + '=' + encodeURIComponent(opts[k]);
+            }
+
             try {
-                const response = await fetch('/setup/migrate/' + ip + '?target_url=' + encodeURIComponent(targetUrl), { method: 'POST' });
+                const response = await fetch('/setup/migrate/' + ip + query, { method: 'POST' });
                 const result = await response.json();
                 if (result.ok) {
                     statusDiv.style.backgroundColor = '#ccffcc';
@@ -285,6 +402,38 @@
                 statusDiv.style.backgroundColor = '#ffcccc';
                 statusDiv.innerHTML = 'Error ensuring remote services for ' + ip + ': ' + error;
             }
+        }
+
+        async function backupConfig(ip) {
+            if (!ip) {
+                alert('Please enter a valid IP address.');
+                return;
+            }
+            const statusDiv = document.getElementById('status');
+            statusDiv.style.display = 'block';
+            statusDiv.style.backgroundColor = '#ffffcc';
+            statusDiv.innerHTML = 'Creating backup for ' + ip + '...';
+
+            try {
+                const response = await fetch('/setup/backup/' + ip, { method: 'POST' });
+                const result = await response.json();
+                if (result.ok) {
+                    statusDiv.style.backgroundColor = '#ccffcc';
+                    statusDiv.innerHTML = 'Successfully created backup for ' + ip + '.';
+                    showSummary(ip); // Refresh
+                } else {
+                    statusDiv.style.backgroundColor = '#ffcccc';
+                    statusDiv.innerHTML = 'Backup failed for ' + ip + ': ' + (result.message || 'Unknown error');
+                }
+            } catch (error) {
+                statusDiv.style.backgroundColor = '#ffcccc';
+                statusDiv.innerHTML = 'Error creating backup for ' + ip + ': ' + error;
+            }
+        }
+
+        function toggleOriginalConfig() {
+            const pane = document.getElementById('original-config-pane');
+            pane.style.display = pane.style.display === 'none' ? 'block' : 'none';
         }
 
         fetchDevices();

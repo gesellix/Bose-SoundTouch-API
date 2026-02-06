@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -55,7 +56,7 @@ func TestGetMigrationSummary_SSHFailure(t *testing.T) {
 	// or use a local port that is closed.
 	// We'll use a local port that we know is closed.
 	manager := NewManager("http://localhost:8000", nil)
-	summary, err := manager.GetMigrationSummary("127.0.0.1", "")
+	summary, err := manager.GetMigrationSummary("127.0.0.1", "", "", nil)
 
 	// Currently it might return an error OR it might return a summary with SSHSuccess: false
 	// but the issue description says the user is told connection SUCCEEDED.
@@ -67,8 +68,45 @@ func TestGetMigrationSummary_SSHFailure(t *testing.T) {
 		if summary.CurrentConfig == "" {
 			t.Errorf("Expected CurrentConfig to contain error message, got empty string")
 		}
-		fmt.Printf("Got expected SSH failure summary: %s\n", summary.CurrentConfig)
 	} else {
 		t.Errorf("Expected no error from GetMigrationSummary, got %v", err)
 	}
+}
+
+func TestGetMigrationSummary_WithProxyOptions(t *testing.T) {
+	// Setup a mock server for live info
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/xml")
+		fmt.Fprint(w, `<info deviceID="123"><name>Test</name></info>`)
+	}))
+	defer server.Close()
+
+	host := server.Listener.Addr().String()
+	manager := NewManager("http://soundcork:8000", nil)
+
+	// Since we can't easily mock SSH here without a full SSH server,
+	// we are testing the logic that depends on ParsedCurrentConfig being nil or not.
+	// However, GetMigrationSummary tries to connect via SSH.
+	// If SSH fails, ParsedCurrentConfig will be nil.
+
+	options := map[string]string{
+		"marge":     "original",
+		"stats":     "soundcork",
+		"sw_update": "original",
+		"bmx":       "soundcork",
+	}
+
+	summary, err := manager.GetMigrationSummary(host, "http://target:8000", "http://proxy:8080", options)
+	if err != nil {
+		t.Fatalf("GetMigrationSummary failed: %v", err)
+	}
+
+	// When SSH fails (which it will here), PlannedConfig should be the default one for target:8000
+	if !contains(summary.PlannedConfig, "http://target:8000/marge") {
+		t.Errorf("Expected default marge URL when SSH fails, got: %s", summary.PlannedConfig)
+	}
+}
+
+func contains(s, substr string) bool {
+	return strings.Contains(s, substr)
 }
