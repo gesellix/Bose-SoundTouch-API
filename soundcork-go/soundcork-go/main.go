@@ -166,6 +166,12 @@ func main() {
 
 	pyProxy := httputil.NewSingleHostReverseProxy(target)
 	pyProxy.ModifyResponse = func(res *http.Response) error {
+		// Ensure ETag is uppercase 'T'
+		if etags, ok := res.Header["Etag"]; ok {
+			delete(res.Header, "Etag")
+			res.Header["ETag"] = etags
+		}
+
 		currentLp := proxy.NewLoggingProxy(target.String(), server.proxyRedact)
 		currentLp.LogBody = server.proxyLogBody
 		currentLp.LogResponse(res)

@@ -24,7 +24,7 @@ func (s *Server) handleMargeSourceProviders(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	w.Header().Set("Content-Type", "application/xml")
-	w.Header().Set("ETag", etag)
+	w.Header()["ETag"] = []string{etag}
 	w.Write(data)
 }
 
@@ -42,7 +42,7 @@ func (s *Server) handleMargeAccountFull(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	w.Header().Set("Content-Type", "application/xml")
-	w.Header().Set("ETag", etag)
+	w.Header()["ETag"] = []string{etag}
 	w.Write(data)
 }
 
@@ -71,12 +71,12 @@ func (s *Server) handleMargeSoftwareUpdate(w http.ResponseWriter, r *http.Reques
 	data, err := os.ReadFile(path)
 	if err != nil {
 		w.Header().Set("Content-Type", "application/xml")
-		w.Header().Set("ETag", etag)
+		w.Header()["ETag"] = []string{etag}
 		w.Write([]byte(marge.SoftwareUpdateToXML()))
 		return
 	}
 	w.Header().Set("Content-Type", "application/xml")
-	w.Header().Set("ETag", etag)
+	w.Header()["ETag"] = []string{etag}
 	w.Write(data)
 }
 
@@ -94,7 +94,7 @@ func (s *Server) handleMargePresets(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/xml")
-	w.Header().Set("ETag", etag)
+	w.Header()["ETag"] = []string{etag}
 	w.Write(data)
 }
 
@@ -103,7 +103,7 @@ func (s *Server) handleMargeUpdatePreset(w http.ResponseWriter, r *http.Request)
 	device := chi.URLParam(r, "device")
 
 	etag := strconv.FormatInt(s.ds.GetETagForPresets(account), 10)
-	w.Header().Set("ETag", etag)
+	w.Header()["ETag"] = []string{etag}
 
 	presetNumberStr := chi.URLParam(r, "presetNumber")
 	presetNumber, err := strconv.Atoi(presetNumberStr)
@@ -130,7 +130,7 @@ func (s *Server) handleMargeAddRecent(w http.ResponseWriter, r *http.Request) {
 	device := chi.URLParam(r, "device")
 
 	etag := strconv.FormatInt(s.ds.GetETagForRecents(account), 10)
-	w.Header().Set("ETag", etag)
+	w.Header()["ETag"] = []string{etag}
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {

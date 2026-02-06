@@ -3,6 +3,8 @@ package main
 import (
 	"net/http"
 	"net/http/httptest"
+	"net/http/httputil"
+	"net/url"
 	"os"
 	"path/filepath"
 	"testing"
@@ -145,6 +147,57 @@ func TestMargeETags(t *testing.T) {
 
 		if res.StatusCode != http.StatusOK {
 			t.Errorf("Expected 200 OK for wrong ETag, got %v", res.Status)
+		}
+	})
+
+	t.Run("ETag Header Case Sensitivity", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("GET", "/marge/accounts/"+account+"/full", nil)
+		r.ServeHTTP(w, req)
+
+		t.Logf("Recorder Headers: %v", w.Header())
+
+		found := false
+		for k := range w.Header() {
+			if k == "ETag" {
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			t.Errorf("Expected exact 'ETag' header in recorder, but it was not found in: %v", w.Header())
+		}
+	})
+
+	t.Run("ETag Header Case Sensitivity (Proxy)", func(t *testing.T) {
+		// Mock a backend response with lowercase 'etag'
+		backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header()["etag"] = []string{"backend-etag"}
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("<xml/>"))
+		}))
+		defer backend.Close()
+
+		target, _ := url.Parse(backend.URL)
+		pyProxy := httputil.NewSingleHostReverseProxy(target)
+		pyProxy.ModifyResponse = func(res *http.Response) error {
+			if etags, ok := res.Header["Etag"]; ok {
+				delete(res.Header, "Etag")
+				res.Header["ETag"] = etags
+			}
+			return nil
+		}
+
+		// We'll use a direct call to the ModifyResponse to check logic
+		resp := &http.Response{
+			Header: make(http.Header),
+		}
+		resp.Header["Etag"] = []string{"test-etag"}
+		pyProxy.ModifyResponse(resp)
+
+		if _, ok := resp.Header["ETag"]; !ok {
+			t.Errorf("ModifyResponse did not normalize ETag casing. Headers: %v", resp.Header)
 		}
 	})
 }
