@@ -1,5 +1,5 @@
 # Stage 1: Build Go binary
-FROM golang:1.25.5-alpine AS go-builder
+FROM golang:1.25.6-alpine AS go-builder
 WORKDIR /src
 COPY soundcork-go/go.mod soundcork-go/go.sum ./
 RUN go mod download
