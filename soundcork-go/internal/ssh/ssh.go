@@ -1,7 +1,6 @@
 package ssh
 
 import (
-	"bytes"
 	"fmt"
 	"time"
 
@@ -40,11 +39,31 @@ func (c *Client) getConfig() *ssh.ClientConfig {
 				"ecdh-sha2-nistp521",
 				"curve25519-sha256@libssh.org",
 			},
+			Ciphers: []string{
+				"aes128-ctr",
+				"aes192-ctr",
+				"aes256-ctr",
+				"aes128-cbc",
+				"3des-cbc",
+				"aes128-gcm@openssh.com",
+				"arcfour256",
+				"arcfour128",
+			},
+		},
+		HostKeyAlgorithms: []string{
+			ssh.KeyAlgoRSASHA256,
+			ssh.KeyAlgoRSASHA512,
+			ssh.KeyAlgoRSA,
+			ssh.KeyAlgoDSA,
+			ssh.KeyAlgoECDSA256,
+			ssh.KeyAlgoECDSA384,
+			ssh.KeyAlgoECDSA521,
+			ssh.KeyAlgoED25519,
 		},
 	}
 }
 
-// Run executes a command on the remote host and returns the output.
+// Run executes a command on the remote host and returns the combined stdout and stderr.
 func (c *Client) Run(command string) (string, error) {
 	config := c.getConfig()
 	client, err := ssh.Dial("tcp", c.Host+":22", config)
@@ -59,13 +78,8 @@ func (c *Client) Run(command string) (string, error) {
 	}
 	defer session.Close()
 
-	var b bytes.Buffer
-	session.Stdout = &b
-	session.Stderr = &b
-	if err := session.Run(command); err != nil {
-		return b.String(), fmt.Errorf("failed to run command: %v", err)
-	}
-	return b.String(), nil
+	output, err := session.CombinedOutput(command)
+	return string(output), err
 }
 
 // UploadContent uploads the given content to a file on the remote host.

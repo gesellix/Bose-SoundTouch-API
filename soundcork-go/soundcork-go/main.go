@@ -18,9 +18,43 @@ import (
 )
 
 type Server struct {
-	ds        *datastore.DataStore
-	sm        *setup.Manager
-	serverURL string
+	ds          *datastore.DataStore
+	sm          *setup.Manager
+	serverURL   string
+	discovering bool
+}
+
+func (s *Server) discoverDevices() {
+	s.discovering = true
+	defer func() { s.discovering = false }()
+
+	log.Println("Scanning for Bose devices...")
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	svc := discovery.NewService(10 * time.Second)
+	devices, err := svc.DiscoverDevices(ctx)
+	if err != nil {
+		log.Printf("Discovery error: %v", err)
+		return
+	}
+
+	for _, d := range devices {
+		log.Printf("Discovered Bose device: %s at %s", d.Name, d.Host)
+		// Update datastore for a default account (e.g., "default")
+		// In a real scenario, we might need to know which account this device belongs to.
+		info := &models.DeviceInfo{
+			DeviceID:           d.SerialNo,
+			Name:               d.Name,
+			IPAddress:          d.Host,
+			DeviceSerialNumber: d.SerialNo,
+			ProductCode:        d.ModelID,
+			FirmwareVersion:    "0.0.0", // Unknown from discovery
+		}
+		if err := s.ds.SaveDeviceInfo("default", d.SerialNo, info); err != nil {
+			log.Printf("Failed to save device info: %v", err)
+		}
+	}
 }
 
 func main() {
@@ -64,7 +98,7 @@ func main() {
 		serverURL = "http://" + hostname + ":" + port
 	}
 
-	sm := setup.NewManager(serverURL)
+	sm := setup.NewManager(serverURL, ds)
 
 	server := &Server{
 		ds:        ds,
@@ -75,31 +109,7 @@ func main() {
 	// Phase 5: Device Discovery
 	go func() {
 		for {
-			log.Println("Scanning for Bose devices...")
-			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-			svc := discovery.NewService(10 * time.Second)
-			devices, err := svc.DiscoverDevices(ctx)
-			cancel()
-			if err != nil {
-				log.Printf("Discovery error: %v", err)
-			} else {
-				for _, d := range devices {
-					log.Printf("Discovered Bose device: %s at %s", d.Name, d.Host)
-					// Update datastore for a default account (e.g., "default")
-					// In a real scenario, we might need to know which account this device belongs to.
-					info := &models.DeviceInfo{
-						DeviceID:           d.SerialNo,
-						Name:               d.Name,
-						IPAddress:          d.Host,
-						DeviceSerialNumber: d.SerialNo,
-						ProductCode:        d.ModelID,
-						FirmwareVersion:    "0.0.0", // Unknown from discovery
-					}
-					if err := ds.SaveDeviceInfo("default", d.SerialNo, info); err != nil {
-						log.Printf("Failed to save device info: %v", err)
-					}
-				}
-			}
+			server.discoverDevices()
 			time.Sleep(5 * time.Minute)
 		}
 	}()
@@ -146,8 +156,13 @@ func main() {
 	// Phase 7: Setup and Discovery endpoints
 	r.Route("/setup", func(r chi.Router) {
 		r.Get("/devices", server.handleListDiscoveredDevices)
+		r.Post("/discover", server.handleTriggerDiscovery)
+		r.Get("/discovery-status", server.handleGetDiscoveryStatus)
+		r.Get("/settings", server.handleGetSettings)
+		r.Get("/info/{deviceIP}", server.handleGetDeviceInfo)
 		r.Get("/summary/{deviceIP}", server.handleGetMigrationSummary)
 		r.Post("/migrate/{deviceIP}", server.handleMigrateDevice)
+		r.Post("/ensure-remote-services/{deviceIP}", server.handleEnsureRemoteServices)
 	})
 
 	// Delegation Logic: Proxy everything else to Python
