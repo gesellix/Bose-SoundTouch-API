@@ -150,3 +150,28 @@ func (s *Server) handleBackupConfig(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "message": "Backup created"})
 }
+
+func (s *Server) handleGetProxySettings(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]bool{
+		"redact":   s.proxyRedact,
+		"log_body": s.proxyLogBody,
+	})
+}
+
+func (s *Server) handleUpdateProxySettings(w http.ResponseWriter, r *http.Request) {
+	var settings struct {
+		Redact  bool `json:"redact"`
+		LogBody bool `json:"log_body"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&settings); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	s.proxyRedact = settings.Redact
+	s.proxyLogBody = settings.LogBody
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "message": "Proxy settings updated"})
+}

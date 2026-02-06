@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Soundcork Management</title>
+    <link rel="icon" href="/media/favicon-braille.svg" type="image/svg+xml">
     <style>
         body { font-family: sans-serif; margin: 20px; }
         table { border-collapse: collapse; width: 100%; }
@@ -37,6 +38,11 @@
             <label for="proxy-domain">Proxy Domain:</label>
             <input type="text" id="proxy-domain" placeholder="http://localhost:8080" style="width: 300px;">
             <span style="font-size: 0.8em; color: #666;">(This URL will be used to proxy upstream Bose services)</span>
+        </div>
+        <div style="margin-bottom: 10px;">
+            Proxy Logging:
+            <label><input type="checkbox" id="proxy-redact" onchange="updateProxySettings()"> Redact Sensitive Headers</label>
+            <label style="margin-left: 15px;"><input type="checkbox" id="proxy-log-body" onchange="updateProxySettings()"> Log Bodies</label>
         </div>
     </div>
 
@@ -129,8 +135,36 @@
                 if (settings.proxy_url) {
                     document.getElementById('proxy-domain').value = settings.proxy_url;
                 }
+                fetchProxySettings();
             } catch (error) {
                 console.error('Failed to fetch settings', error);
+            }
+        }
+
+        async function fetchProxySettings() {
+            try {
+                const response = await fetch('/setup/proxy-settings');
+                const settings = await response.json();
+                document.getElementById('proxy-redact').checked = settings.redact;
+                document.getElementById('proxy-log-body').checked = settings.log_body;
+            } catch (error) {
+                console.error('Failed to fetch proxy settings', error);
+            }
+        }
+
+        async function updateProxySettings() {
+            const settings = {
+                redact: document.getElementById('proxy-redact').checked,
+                log_body: document.getElementById('proxy-log-body').checked
+            };
+            try {
+                await fetch('/setup/proxy-settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(settings)
+                });
+            } catch (error) {
+                console.error('Failed to update proxy settings', error);
             }
         }
 

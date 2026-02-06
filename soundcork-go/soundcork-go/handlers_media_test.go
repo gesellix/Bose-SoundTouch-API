@@ -9,7 +9,7 @@ import (
 )
 
 func TestRootEndpoint(t *testing.T) {
-	r := setupRouter("http://localhost:8001", nil)
+	r, _ := setupRouter("http://localhost:8001", nil)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 
@@ -39,7 +39,7 @@ func TestRootEndpoint(t *testing.T) {
 }
 
 func TestRootEndpointJSON(t *testing.T) {
-	r := setupRouter("http://localhost:8001", nil)
+	r, _ := setupRouter("http://localhost:8001", nil)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 
@@ -70,7 +70,7 @@ func TestRootEndpointJSON(t *testing.T) {
 }
 
 func TestStaticMedia(t *testing.T) {
-	r := setupRouter("http://localhost:8001", nil)
+	r, _ := setupRouter("http://localhost:8001", nil)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 

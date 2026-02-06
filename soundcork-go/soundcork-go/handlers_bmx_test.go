@@ -10,7 +10,7 @@ import (
 )
 
 func TestBMXServices(t *testing.T) {
-	r := setupRouter("http://localhost:8001", nil)
+	r, _ := setupRouter("http://localhost:8001", nil)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 
@@ -45,7 +45,7 @@ func TestBMXServices(t *testing.T) {
 }
 
 func TestOrionPlayback(t *testing.T) {
-	r := setupRouter("http://localhost:8001", nil)
+	r, _ := setupRouter("http://localhost:8001", nil)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 

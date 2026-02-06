@@ -129,16 +129,31 @@ This allows for incremental porting and testing without breaking existing functi
 
 - [x] Align Base64 robustness for BMX (try URL-safe first).
 - [x] Align Recents timestamp behavior (preserve `createdOn`).
-- [ ] Implement ETag handling for Marge endpoints:
-    - [ ] `GET /marge/streaming/sourceproviders`
-    - [ ] `GET /marge/accounts/{account}/full`
-    - [ ] `GET /marge/accounts/{account}/devices/{device}/presets`
-    - [ ] `POST /accounts/{account}/devices/{device}/recents`
-    - [ ] `GET /marge/updates/soundtouch`
-- [ ] Respect `If-None-Match` and return `304 Not Modified` where applicable.
-- [ ] Add unit tests for ETag and `304` behavior.
-- [ ] Implement `DataStore.Initialize()` for directory bootstrapping.
-- [ ] Improve error handling for malformed XML inputs in DataStore.
+- [x] Implement ETag handling for Marge endpoints:
+    - [x] `GET /marge/streaming/sourceproviders`
+    - [x] `GET /marge/accounts/{account}/full`
+    - [x] `GET /marge/accounts/{account}/devices/{device}/presets`
+    - [x] `POST /accounts/{account}/devices/{device}/recents` (Response header)
+    - [x] `GET /marge/updates/soundtouch`
+- [x] Respect `If-None-Match` and return `304 Not Modified` where applicable.
+- [x] Add unit tests for ETag and `304` behavior.
+- [x] Implement `DataStore.Initialize()` for directory bootstrapping.
+- [x] Improve error handling for malformed XML inputs in DataStore.
 - [ ] Evaluate "Create Account from Device" parity.
+
+## Phase 9: Proxy Instrumentation & Monitoring (Feb 2026)
+
+**Goal**: Complete view on device-upstream interaction for debugging and analysis.
+
+- [x] Implement comprehensive logging for the proxy:
+    - [x] Log request/response URLs, methods, status codes.
+    - [x] Log headers with default redaction for sensitive fields (e.g., `X-Bose-Token`, `Authorization`).
+    - [x] Log request/response bodies.
+    - [x] Control logging settings (redact, log body) via Web UI.
+- [x] Implement smart body logging:
+    - [x] Skip/truncate logging for streaming data or excessively large bodies.
+    - [x] Detect `Content-Type` to decide on logging format (text/xml vs binary).
+- [x] Add control for redaction and logging verbosity (e.g., via environment variables).
+- [x] Ensure all proxy interactions are traceable for troubleshooting (e.g. issues like #129).
 
 ---

@@ -8,11 +8,13 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/deborahgu/soundcork/internal/datastore"
 	"github.com/deborahgu/soundcork/internal/models"
+	"github.com/deborahgu/soundcork/internal/proxy"
 	"github.com/deborahgu/soundcork/internal/setup"
 	"github.com/gesellix/bose-soundtouch/pkg/discovery"
 	"github.com/go-chi/chi/v5"
@@ -20,11 +22,13 @@ import (
 )
 
 type Server struct {
-	ds          *datastore.DataStore
-	sm          *setup.Manager
-	serverURL   string
-	proxyURL    string
-	discovering bool
+	ds           *datastore.DataStore
+	sm           *setup.Manager
+	serverURL    string
+	proxyURL     string
+	discovering  bool
+	proxyRedact  bool
+	proxyLogBody bool
 }
 
 func (s *Server) discoverDevices() {
@@ -83,7 +87,8 @@ func (s *Server) handleProxyRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("Proxying request: %s %s -> %s", r.Method, r.URL.Path, target.String())
+	lp := proxy.NewLoggingProxy(target.String(), s.proxyRedact)
+	lp.LogBody = s.proxyLogBody
 
 	proxy := httputil.NewSingleHostReverseProxy(target)
 	// Update director to set the correct host and path
@@ -93,6 +98,12 @@ func (s *Server) handleProxyRequest(w http.ResponseWriter, r *http.Request) {
 		req.Host = target.Host
 		req.URL.Path = target.Path
 		req.URL.RawQuery = r.URL.RawQuery
+		lp.LogRequest(req)
+	}
+
+	proxy.ModifyResponse = func(res *http.Response) error {
+		lp.LogResponse(res)
+		return nil
 	}
 
 	proxy.ServeHTTP(w, r)
@@ -121,13 +132,14 @@ func main() {
 		log.Fatalf("Failed to parse target URL: %v", err)
 	}
 
-	proxy := httputil.NewSingleHostReverseProxy(target)
-
 	dataDir := os.Getenv("DATA_DIR")
 	if dataDir == "" {
 		dataDir = "data"
 	}
 	ds := datastore.NewDataStore(dataDir)
+	if err := ds.Initialize(); err != nil {
+		log.Printf("Warning: Failed to initialize datastore: %v", err)
+	}
 
 	serverURL := os.Getenv("SERVER_URL")
 	if serverURL == "" {
@@ -141,10 +153,30 @@ func main() {
 
 	sm := setup.NewManager(serverURL, ds)
 
+	redact := os.Getenv("REDACT_PROXY_LOGS") != "false"
+	logBody := os.Getenv("LOG_PROXY_BODY") == "true"
+
 	server := &Server{
-		ds:        ds,
-		sm:        sm,
-		serverURL: serverURL,
+		ds:           ds,
+		sm:           sm,
+		serverURL:    serverURL,
+		proxyRedact:  redact,
+		proxyLogBody: logBody,
+	}
+
+	pyProxy := httputil.NewSingleHostReverseProxy(target)
+	pyProxy.ModifyResponse = func(res *http.Response) error {
+		currentLp := proxy.NewLoggingProxy(target.String(), server.proxyRedact)
+		currentLp.LogBody = server.proxyLogBody
+		currentLp.LogResponse(res)
+		return nil
+	}
+	originalPyDirector := pyProxy.Director
+	pyProxy.Director = func(req *http.Request) {
+		originalPyDirector(req)
+		currentLp := proxy.NewLoggingProxy(target.String(), server.proxyRedact)
+		currentLp.LogBody = server.proxyLogBody
+		currentLp.LogRequest(req)
 	}
 
 	proxyPort := os.Getenv("PROXY_PORT")
@@ -190,17 +222,36 @@ func main() {
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 
+	mediaDir := os.Getenv("MEDIA_DIR")
+	if mediaDir == "" {
+		// Try a few common locations
+		candidates := []string{
+			"soundcork/media",
+			"../soundcork/media",
+			"../../soundcork/media",
+		}
+		for _, c := range candidates {
+			if _, err := os.Stat(c); err == nil {
+				mediaDir = c
+				break
+			}
+		}
+	}
+	if mediaDir == "" {
+		mediaDir = "soundcork/media" // fallback
+	}
+	log.Printf("Using media directory: %s", mediaDir)
+
 	// Phase 2: Root endpoint implemented in Go
 	r.Get("/", server.handleRoot)
+	r.Get("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, filepath.Join(mediaDir, "favicon-braille.svg"))
+	})
 
 	// Phase 2: Static file serving for /media
 	// In the project root, media is in soundcork/media
 	// But in Docker, we might need to be careful about the paths.
 	// Let's assume the media is accessible at ./soundcork/media relative to where the binary runs.
-	mediaDir := os.Getenv("MEDIA_DIR")
-	if mediaDir == "" {
-		mediaDir = "soundcork/media"
-	}
 	r.Get("/media/*", server.handleMedia(mediaDir))
 
 	// Phase 3: BMX endpoints
@@ -236,12 +287,13 @@ func main() {
 		r.Post("/migrate/{deviceIP}", server.handleMigrateDevice)
 		r.Post("/ensure-remote-services/{deviceIP}", server.handleEnsureRemoteServices)
 		r.Post("/backup/{deviceIP}", server.handleBackupConfig)
+		r.Get("/proxy-settings", server.handleGetProxySettings)
+		r.Post("/proxy-settings", server.handleUpdateProxySettings)
 	})
 
 	// Delegation Logic: Proxy everything else to Python
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("Proxying request: %s %s -> %s", r.Method, r.URL.Path, targetURL)
-		proxy.ServeHTTP(w, r)
+		pyProxy.ServeHTTP(w, r)
 	})
 
 	log.Printf("Go service starting on %s, proxying to %s", addr, targetURL)

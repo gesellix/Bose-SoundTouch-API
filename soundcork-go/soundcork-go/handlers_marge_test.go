@@ -14,7 +14,7 @@ import (
 )
 
 func TestMargeSourceProviders(t *testing.T) {
-	r := setupRouter("http://localhost:8001", nil)
+	r, _ := setupRouter("http://localhost:8001", nil)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 
@@ -35,7 +35,7 @@ func TestMargeSourceProviders(t *testing.T) {
 }
 
 func TestMargeSoftwareUpdate(t *testing.T) {
-	r := setupRouter("http://localhost:8001", nil)
+	r, _ := setupRouter("http://localhost:8001", nil)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 
@@ -86,7 +86,7 @@ func TestMargeAccountFull(t *testing.T) {
 		</info>
 	`), 0644)
 
-	r := setupRouter("http://localhost:8001", ds)
+	r, _ := setupRouter("http://localhost:8001", ds)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 
@@ -115,7 +115,7 @@ func TestMargePresets(t *testing.T) {
 	accountDir := filepath.Join(tempDir, account)
 	os.MkdirAll(accountDir, 0755)
 
-	r := setupRouter("http://localhost:8001", ds)
+	r, _ := setupRouter("http://localhost:8001", ds)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 
@@ -180,7 +180,7 @@ func TestMargeUpdatePreset(t *testing.T) {
 	`), 0644)
 	os.WriteFile(filepath.Join(accountDir, "Presets.xml"), []byte(`<presets></presets>`), 0644)
 
-	r := setupRouter("http://localhost:8001", ds)
+	r, _ := setupRouter("http://localhost:8001", ds)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 
@@ -230,7 +230,7 @@ func TestMargeAddRecent(t *testing.T) {
 	`), 0644)
 	os.WriteFile(filepath.Join(accountDir, "Recents.xml"), []byte(`<recents></recents>`), 0644)
 
-	r := setupRouter("http://localhost:8001", ds)
+	r, _ := setupRouter("http://localhost:8001", ds)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 
@@ -268,7 +268,7 @@ func TestMargeAddRemoveDevice(t *testing.T) {
 	accountDir := filepath.Join(tempDir, account)
 	os.MkdirAll(accountDir, 0755)
 
-	r := setupRouter("http://localhost:8001", ds)
+	r, _ := setupRouter("http://localhost:8001", ds)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 
@@ -319,7 +319,7 @@ func TestMargeAddRemoveDevice(t *testing.T) {
 }
 
 func TestMargePowerOn(t *testing.T) {
-	r := setupRouter("http://localhost:8001", nil)
+	r, _ := setupRouter("http://localhost:8001", nil)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 

@@ -8,7 +8,7 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-func setupRouter(targetURL string, ds *datastore.DataStore) *chi.Mux {
+func setupRouter(targetURL string, ds *datastore.DataStore) (*chi.Mux, *Server) {
 	target, _ := url.Parse(targetURL)
 	proxy := &reverseProxy{target: target}
 	server := &Server{ds: ds}
@@ -42,10 +42,16 @@ func setupRouter(targetURL string, ds *datastore.DataStore) *chi.Mux {
 		r.Delete("/accounts/{account}/devices/{device}", server.handleMargeRemoveDevice)
 	})
 
+	// Setup Setup for tests
+	r.Route("/setup", func(r chi.Router) {
+		r.Get("/proxy-settings", server.handleGetProxySettings)
+		r.Post("/proxy-settings", server.handleUpdateProxySettings)
+	})
+
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
 		proxy.ServeHTTP(w, r)
 	})
-	return r
+	return r, server
 }
 
 type reverseProxy struct {

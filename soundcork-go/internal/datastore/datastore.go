@@ -156,7 +156,7 @@ func (ds *DataStore) GetPresets(account string) ([]models.Preset, error) {
 	}
 
 	if err := xml.Unmarshal(data, &presetsWrap); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("malformed presets XML at %s: %w", path, err)
 	}
 
 	presets := []models.Preset{}
@@ -253,7 +253,7 @@ func (ds *DataStore) GetRecents(account string) ([]models.Recent, error) {
 	}
 
 	if err := xml.Unmarshal(data, &recentsWrap); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("malformed recents XML at %s: %w", path, err)
 	}
 
 	recents := []models.Recent{}
@@ -427,7 +427,7 @@ func (ds *DataStore) GetConfiguredSources(account string) ([]models.ConfiguredSo
 	}
 
 	if err := xml.Unmarshal(data, &sourcesWrap); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("malformed sources XML at %s: %w", path, err)
 	}
 
 	var sources []models.ConfiguredSource
@@ -491,6 +491,26 @@ func (ds *DataStore) SaveConfiguredSources(account string, sources []models.Conf
 
 	header := []byte(xml.Header)
 	return os.WriteFile(path, append(header, data...), 0644)
+}
+
+func (ds *DataStore) Initialize() error {
+	// Ensure base data directory exists
+	if err := os.MkdirAll(ds.DataDir, 0755); err != nil {
+		return fmt.Errorf("failed to create data directory: %w", err)
+	}
+
+	// Ensure default account exists
+	defaultDir := ds.AccountDir("default")
+	if err := os.MkdirAll(defaultDir, 0755); err != nil {
+		return fmt.Errorf("failed to create default account directory: %w", err)
+	}
+
+	// Ensure devices subdirectory for default account
+	if err := os.MkdirAll(ds.AccountDevicesDir("default"), 0755); err != nil {
+		return fmt.Errorf("failed to create default devices directory: %w", err)
+	}
+
+	return nil
 }
 
 func (ds *DataStore) GetETagForPresets(account string) int64 {
