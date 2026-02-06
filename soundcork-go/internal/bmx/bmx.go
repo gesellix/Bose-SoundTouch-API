@@ -118,7 +118,11 @@ func TuneInPlayback(stationID string) (*models.BmxPlaybackResponse, error) {
 }
 
 func TuneInPodcastInfo(podcastID string, encodedName string) (*models.BmxPodcastInfoResponse, error) {
-	nameBytes, err := base64.StdEncoding.DecodeString(encodedName)
+	// Bose app sometimes sends non-standard base64, so try both standard and URL-safe
+	nameBytes, err := base64.URLEncoding.DecodeString(encodedName)
+	if err != nil {
+		nameBytes, err = base64.StdEncoding.DecodeString(encodedName)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -255,7 +259,11 @@ func TuneInPlaybackPodcast(podcastID string) (*models.BmxPlaybackResponse, error
 }
 
 func PlayCustomStream(data string) (*models.BmxPlaybackResponse, error) {
-	jsonStr, err := base64.StdEncoding.DecodeString(data)
+	// Bose app sometimes sends non-standard base64, so try both standard and URL-safe
+	jsonStr, err := base64.URLEncoding.DecodeString(data)
+	if err != nil {
+		jsonStr, err = base64.StdEncoding.DecodeString(data)
+	}
 	if err != nil {
 		return nil, err
 	}

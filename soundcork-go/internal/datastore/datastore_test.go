@@ -217,3 +217,72 @@ func TestListAllDevices_MalformedXML(t *testing.T) {
 		t.Errorf("Expected 0 devices, got %d", len(devices))
 	}
 }
+
+func TestConfiguredSources(t *testing.T) {
+	tempDir, _ := os.MkdirTemp("", "datastore-sources-*")
+	defer os.RemoveAll(tempDir)
+	ds := NewDataStore(tempDir)
+	account := "test-acc"
+
+	sources := []models.ConfiguredSource{
+		{
+			DisplayName:      "Source 1",
+			ID:               "101",
+			Secret:           "secret1",
+			SecretType:       "type1",
+			SourceKeyType:    "TUNEIN",
+			SourceKeyAccount: "user1",
+		},
+		{
+			DisplayName:      "Source 2",
+			ID:               "102",
+			Secret:           "secret2",
+			SecretType:       "type2",
+			SourceKeyType:    "PANDORA",
+			SourceKeyAccount: "user2",
+		},
+	}
+
+	err := ds.SaveConfiguredSources(account, sources)
+	if err != nil {
+		t.Fatalf("SaveConfiguredSources failed: %v", err)
+	}
+
+	loadedSources, err := ds.GetConfiguredSources(account)
+	if err != nil {
+		t.Fatalf("GetConfiguredSources failed: %v", err)
+	}
+
+	if len(loadedSources) != len(sources) {
+		t.Fatalf("Expected %d sources, got %d", len(sources), len(loadedSources))
+	}
+
+	for i, s := range sources {
+		ls := loadedSources[i]
+		if ls.DisplayName != s.DisplayName || ls.ID != s.ID || ls.Secret != s.Secret ||
+			ls.SecretType != s.SecretType || ls.SourceKeyType != s.SourceKeyType ||
+			ls.SourceKeyAccount != s.SourceKeyAccount {
+			t.Errorf("Source %d mismatch. Expected %+v, got %+v", i, s, ls)
+		}
+	}
+
+	// Test with missing ID (GetConfiguredSources should auto-assign)
+	sources2 := []models.ConfiguredSource{
+		{
+			DisplayName:      "Source No ID",
+			SourceKeyType:    "LOCAL",
+			SourceKeyAccount: "user3",
+		},
+	}
+	err = ds.SaveConfiguredSources(account, sources2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	loadedSources2, err := ds.GetConfiguredSources(account)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if loadedSources2[0].ID == "" {
+		t.Error("Expected auto-assigned ID for source with empty ID")
+	}
+}

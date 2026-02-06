@@ -451,6 +451,48 @@ func (ds *DataStore) GetConfiguredSources(account string) ([]models.ConfiguredSo
 	return sources, nil
 }
 
+func (ds *DataStore) SaveConfiguredSources(account string, sources []models.ConfiguredSource) error {
+	path := filepath.Join(ds.AccountDir(account), constants.SourcesFile)
+	os.MkdirAll(filepath.Dir(path), 0755)
+
+	type sourceXML struct {
+		DisplayName string `xml:"displayName,attr"`
+		ID          string `xml:"id,attr"`
+		Secret      string `xml:"secret,attr"`
+		SecretType  string `xml:"secretType,attr"`
+		SourceKey   struct {
+			Account string `xml:"account,attr"`
+			Type    string `xml:"type,attr"`
+		} `xml:"sourceKey"`
+	}
+
+	type sourcesWrap struct {
+		XMLName xml.Name    `xml:"sources"`
+		Sources []sourceXML `xml:"source"`
+	}
+
+	wrap := sourcesWrap{}
+	for _, s := range sources {
+		sx := sourceXML{
+			DisplayName: s.DisplayName,
+			ID:          s.ID,
+			Secret:      s.Secret,
+			SecretType:  s.SecretType,
+		}
+		sx.SourceKey.Account = s.SourceKeyAccount
+		sx.SourceKey.Type = s.SourceKeyType
+		wrap.Sources = append(wrap.Sources, sx)
+	}
+
+	data, err := xml.MarshalIndent(wrap, "", "    ")
+	if err != nil {
+		return err
+	}
+
+	header := []byte(xml.Header)
+	return os.WriteFile(path, append(header, data...), 0644)
+}
+
 func (ds *DataStore) GetETagForPresets(account string) int64 {
 	path := filepath.Join(ds.AccountDir(account), constants.PresetsFile)
 	info, err := os.Stat(path)

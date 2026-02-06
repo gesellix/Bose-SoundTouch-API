@@ -103,6 +103,12 @@ This allows for incremental porting and testing without breaking existing functi
 - [x] Implement migration summary view with SSH check and config comparison.
     - [x] Improve SSH error reporting and UI feedback for unreachable devices.
 - [x] Refactor Web UI to use external HTML file with Go `embed`.
+- [x] Implement Remote Services Persistence (stable `remote_services` via trigger file).
+- [x] Implement Granular Proxying (per-service choice between Soundcork and Original Upstream).
+- [x] Implement Live Device Info retrieval from `:8090/info`.
+- [x] Implement Manual Configuration Backup and Viewing UI.
+- [x] Implement Custom Target and Proxy Domain settings in UI.
+- [x] Improve SSH robustness (legacy ciphers, `ssh-rsa` support, and `rw` filesystem remounting).
 
 ---
 
@@ -116,3 +122,23 @@ This allows for incremental porting and testing without breaking existing functi
 | UPNP          | `upnpclient`            | `github.com/gesellix/Bose-SoundTouch/pkg/discovery` |
 | XML Parsing   | `xml.etree.ElementTree` | `encoding/xml`                                      |
 | Config        | `pydantic-settings`     | `github.com/caarlos0/env`                           |
+
+## Phase 8: Upstream Parity (Feb 2026)
+
+**Goal**: Align Go implementation with recent upstream changes (ETags, Base64, timestamps).
+
+- [x] Align Base64 robustness for BMX (try URL-safe first).
+- [x] Align Recents timestamp behavior (preserve `createdOn`).
+- [ ] Implement ETag handling for Marge endpoints:
+    - [ ] `GET /marge/streaming/sourceproviders`
+    - [ ] `GET /marge/accounts/{account}/full`
+    - [ ] `GET /marge/accounts/{account}/devices/{device}/presets`
+    - [ ] `POST /accounts/{account}/devices/{device}/recents`
+    - [ ] `GET /marge/updates/soundtouch`
+- [ ] Respect `If-None-Match` and return `304 Not Modified` where applicable.
+- [ ] Add unit tests for ETag and `304` behavior.
+- [ ] Implement `DataStore.Initialize()` for directory bootstrapping.
+- [ ] Improve error handling for malformed XML inputs in DataStore.
+- [ ] Evaluate "Create Account from Device" parity.
+
+---

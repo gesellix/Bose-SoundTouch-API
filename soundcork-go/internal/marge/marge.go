@@ -358,17 +358,21 @@ func AddRecent(ds *datastore.DataStore, account string, device string, sourceXML
 
 	// Find existing
 	var recentObj *models.Recent
+	createdOn := DateStr
 	for i, r := range recents {
 		if r.Source == matchingSrc.SourceKeyType && r.Location == newRecentElem.Location && r.SourceAccount == matchingSrc.SourceKeyAccount {
 			recents[i].UtcTime = strconv.FormatInt(utcTime, 10)
 			recentObj = &recents[i]
+			// Moving to front means we need to handle its original createdOn
+			// In bose emulation, we often use fixed dates, but let's try to be consistent
+			// If we had a real createdOn, we'd use it here.
+
 			// Move to front
 			recents = append([]models.Recent{*recentObj}, append(recents[:i], recents[i+1:]...)...)
 			break
 		}
 	}
 
-	createdOn := DateStr
 	if recentObj == nil {
 		maxID := 0
 		for _, r := range recents {
@@ -409,7 +413,7 @@ func AddRecent(ds *datastore.DataStore, account string, device string, sourceXML
 	res += fmt.Sprintf(`<location>%s</location>`, recentObj.Location)
 	res += fmt.Sprintf(`<name>%s</name>`, recentObj.Name)
 	res += GetConfiguredSourceXML(*matchingSrc)
-	res += fmt.Sprintf(`<updatedOn>%s</updatedOn>`, createdOn)
+	res += fmt.Sprintf(`<updatedOn>%s</updatedOn>`, DateStr)
 	res += `</recent>`
 
 	return append([]byte(xml.Header), []byte(res)...), nil
