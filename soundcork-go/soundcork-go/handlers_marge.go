@@ -183,8 +183,12 @@ func (s *Server) handleMargeProviderSettings(w http.ResponseWriter, r *http.Requ
 }
 
 func (s *Server) handleMargeStreamingToken(w http.ResponseWriter, r *http.Request) {
-	// Simple mock token
-	w.Header().Set("Authorization", "Bearer soundcork-mock-token-"+strconv.FormatInt(time.Now().Unix(), 10))
+	// Simple mock token for offline use.
+	// In a real production environment, this would be a JWT or similar signed token.
+	// Some speakers might expect a specific format; soundcork uses a distinctive prefix
+	// to indicate it's a locally generated token.
+	token := "soundcork-local-token-" + strconv.FormatInt(time.Now().Unix(), 10)
+	w.Header().Set("Authorization", "Bearer "+token)
 	w.WriteHeader(http.StatusOK)
 }
 

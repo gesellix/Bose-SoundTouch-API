@@ -366,7 +366,7 @@ func TestMargeAdvancedFeatures(t *testing.T) {
 			t.Errorf("Expected status OK, got %v", res.Status)
 		}
 		token := res.Header.Get("Authorization")
-		if !strings.HasPrefix(token, "Bearer soundcork-mock-token-") {
+		if !strings.HasPrefix(token, "Bearer soundcork-local-token-") {
 			t.Errorf("Invalid token header: %s", token)
 		}
 	})
