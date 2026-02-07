@@ -109,6 +109,8 @@ This allows for incremental porting and testing without breaking existing functi
 - [x] Implement Manual Configuration Backup and Viewing UI.
 - [x] Implement Custom Target and Proxy Domain settings in UI.
 - [x] Improve SSH robustness (legacy ciphers, `ssh-rsa` support, and `rw` filesystem remounting).
+- [x] Consolidate proxy and main service on a single port (8000).
+- [x] Lowercase guessed hostnames for URL consistency.
 
 ---
 

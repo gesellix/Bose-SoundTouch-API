@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"log"
-	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -195,36 +194,11 @@ func main() {
 		currentLp.LogRequest(req)
 	}
 
-	proxyPort := os.Getenv("PROXY_PORT")
-	if proxyPort == "" {
-		proxyPort = "8080"
-	}
-	proxyAddr := bindAddr + ":" + proxyPort
-	if bindAddr == "" {
-		proxyAddr = ":" + proxyPort
-	}
-
 	// Guess proxyURL
 	server.proxyURL = os.Getenv("PROXY_URL")
 	if server.proxyURL == "" {
-		u, _ := url.Parse(serverURL)
-		host, _, _ := net.SplitHostPort(u.Host)
-		if host == "" {
-			host = u.Host
-		}
-		server.proxyURL = "http://" + host + ":" + proxyPort
+		server.proxyURL = serverURL
 	}
-
-	// Start Proxy Server
-	go func() {
-		proxyRouter := chi.NewRouter()
-		proxyRouter.Use(middleware.Logger)
-		proxyRouter.Get("/proxy/*", server.handleProxyRequest)
-		log.Printf("Proxy service starting on %s", proxyAddr)
-		if err := http.ListenAndServe(proxyAddr, proxyRouter); err != nil {
-			log.Printf("Proxy server error: %v", err)
-		}
-	}()
 
 	// Phase 5: Device Discovery
 	go func() {
@@ -301,6 +275,9 @@ func main() {
 		r.Post("/usage", server.handleUsageStats)
 		r.Post("/error", server.handleErrorStats)
 	})
+
+	// Proxy route integrated into main router
+	r.Get("/proxy/*", server.handleProxyRequest)
 
 	// Phase 7: Setup and Discovery endpoints
 	r.Route("/setup", func(r chi.Router) {

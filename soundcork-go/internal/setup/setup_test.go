@@ -96,7 +96,7 @@ func TestGetMigrationSummary_WithProxyOptions(t *testing.T) {
 		"bmx":       "soundcork",
 	}
 
-	summary, err := manager.GetMigrationSummary(host, "http://target:8000", "http://proxy:8080", options)
+	summary, err := manager.GetMigrationSummary(host, "http://target:8000", "http://proxy:8000", options)
 	if err != nil {
 		t.Fatalf("GetMigrationSummary failed: %v", err)
 	}

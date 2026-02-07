@@ -6,7 +6,6 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"net/url"
 
 	"github.com/deborahgu/soundcork/internal/datastore"
 	"github.com/deborahgu/soundcork/internal/ssh"
@@ -198,13 +197,6 @@ func (m *Manager) GetMigrationSummary(deviceIP string, targetURL string, proxyUR
 
 			if proxyURL == "" {
 				proxyURL = targetURL
-				if u, err := url.Parse(targetURL); err == nil {
-					host, _, _ := net.SplitHostPort(u.Host)
-					if host == "" {
-						host = u.Host
-					}
-					proxyURL = fmt.Sprintf("http://%s:8080", host)
-				}
 			}
 
 			// Apply options if provided
@@ -314,13 +306,6 @@ func (m *Manager) MigrateSpeaker(deviceIP string, targetURL string, proxyURL str
 		if xml.Unmarshal([]byte(currentConfig), &currentCfg) == nil {
 			if proxyURL == "" {
 				proxyURL = targetURL
-				if u, err := url.Parse(targetURL); err == nil {
-					host, _, _ := net.SplitHostPort(u.Host)
-					if host == "" {
-						host = u.Host
-					}
-					proxyURL = fmt.Sprintf("http://%s:8080", host)
-				}
 			}
 
 			if options != nil {
