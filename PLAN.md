@@ -111,6 +111,8 @@ This allows for incremental porting and testing without breaking existing functi
 - [x] Improve SSH robustness (legacy ciphers, `ssh-rsa` support, and `rw` filesystem remounting).
 - [x] Consolidate proxy and main service on a single port (8000).
 - [x] Lowercase guessed hostnames for URL consistency.
+- [x] Fixed: Multiple devices with empty serial numbers correctly displayed in UI.
+- [x] Enhanced device discovery: Fetch stable SerialNo from `:8090/info` if missing.
 
 ---
 

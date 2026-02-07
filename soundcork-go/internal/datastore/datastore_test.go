@@ -98,11 +98,11 @@ func TestListAllDevices_Empty(t *testing.T) {
 	// Case 1: DataDir does not exist
 	os.RemoveAll(tempDir)
 	devices, err := ds.ListAllDevices()
-	if err == nil {
-		t.Errorf("Expected error when DataDir does not exist, got nil")
+	if err != nil {
+		t.Errorf("ListAllDevices should not return error when DataDir does not exist, got %v", err)
 	}
-	if devices != nil {
-		t.Errorf("Expected nil devices when DataDir does not exist, got %+v", devices)
+	if devices == nil || len(devices) != 0 {
+		t.Errorf("Expected empty slice when DataDir does not exist, got %+v", devices)
 	}
 
 	// Case 2: DataDir is empty
@@ -174,7 +174,12 @@ func TestListAllDevices_EmptyDeviceID(t *testing.T) {
 		Name:     "Empty ID Speaker",
 	}
 
-	err = ds.SaveDeviceInfo(account, deviceID, info)
+	// Use IP as fallback for device ID if it is empty
+	key := deviceID
+	if key == "" {
+		key = "127.0.0.1"
+	}
+	err = ds.SaveDeviceInfo(account, key, info)
 	if err != nil {
 		t.Fatalf("SaveDeviceInfo failed: %v", err)
 	}
@@ -190,6 +195,48 @@ func TestListAllDevices_EmptyDeviceID(t *testing.T) {
 
 	if devices[0].Name != "Empty ID Speaker" {
 		t.Errorf("Expected Name 'Empty ID Speaker', got %s", devices[0].Name)
+	}
+}
+
+func TestListAllDevices_MultipleEmptyIDs(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "soundcork-multi-empty-test-*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	ds := NewDataStore(tempDir)
+	account := "default"
+
+	// Save two devices with empty ID but different IPs
+	info1 := &models.DeviceInfo{
+		DeviceID:  "",
+		Name:      "Speaker 1",
+		IPAddress: "192.168.1.1",
+	}
+	info2 := &models.DeviceInfo{
+		DeviceID:  "",
+		Name:      "Speaker 2",
+		IPAddress: "192.168.1.2",
+	}
+
+	// We use the same logic as in main.go: use IP as fallback for directory name
+	err = ds.SaveDeviceInfo(account, info1.IPAddress, info1)
+	if err != nil {
+		t.Fatalf("SaveDeviceInfo 1 failed: %v", err)
+	}
+	err = ds.SaveDeviceInfo(account, info2.IPAddress, info2)
+	if err != nil {
+		t.Fatalf("SaveDeviceInfo 2 failed: %v", err)
+	}
+
+	devices, err := ds.ListAllDevices()
+	if err != nil {
+		t.Fatalf("ListAllDevices failed: %v", err)
+	}
+
+	if len(devices) != 2 {
+		t.Fatalf("Expected 2 devices, got %d", len(devices))
 	}
 }
 

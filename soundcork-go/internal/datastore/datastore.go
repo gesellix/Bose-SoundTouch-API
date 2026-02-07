@@ -14,6 +14,11 @@ import (
 	"github.com/deborahgu/soundcork/internal/models"
 )
 
+func exists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
+}
+
 type DataStore struct {
 	DataDir      string
 	eventMutex   sync.RWMutex
@@ -96,46 +101,122 @@ func (ds *DataStore) GetDeviceInfo(account, device string) (*models.DeviceInfo, 
 
 // ListAllDevices returns a list of all devices in all accounts.
 func (ds *DataStore) ListAllDevices() ([]models.DeviceInfo, error) {
-	accounts, err := os.ReadDir(ds.DataDir)
-	if err != nil {
-		return nil, err
+	dirs := []string{}
+	if exists(ds.DataDir) {
+		dirs = append(dirs, ds.DataDir)
+	}
+	// Also check soundcork-go/data if it's different and exists
+	altDir := "soundcork-go/data"
+	if ds.DataDir != altDir && exists(altDir) {
+		dirs = append(dirs, altDir)
+	}
+
+	if len(dirs) == 0 {
+		return []models.DeviceInfo{}, nil
 	}
 
 	devices := []models.DeviceInfo{}
-	for _, acc := range accounts {
-		if !acc.IsDir() {
-			continue
-		}
+	seenIDs := make(map[string]bool)
 
-		devicesDir := ds.AccountDevicesDir(acc.Name())
-		deviceEntries, err := os.ReadDir(devicesDir)
+	for _, dir := range dirs {
+		accounts, err := os.ReadDir(dir)
 		if err != nil {
-			// Skip accounts with no devices directory or other issues
 			continue
 		}
 
-		for _, dev := range deviceEntries {
-			if !dev.IsDir() {
-				// If it's a file, it might be DeviceInfo.xml directly in devices/ (when deviceID is empty)
-				if dev.Name() == constants.DeviceInfoFile {
-					info, err := ds.GetDeviceInfo(acc.Name(), "")
-					if err == nil && info != nil {
-						devices = append(devices, *info)
-					}
-				}
+		for _, acc := range accounts {
+			if !acc.IsDir() {
 				continue
 			}
 
-			info, err := ds.GetDeviceInfo(acc.Name(), dev.Name())
-			if err == nil && info != nil {
-				devices = append(devices, *info)
-			} else if err != nil {
-				fmt.Fprintf(os.Stderr, "Error loading device info for account %s, device %s: %v\n", acc.Name(), dev.Name(), err)
+			devicesDir := filepath.Join(dir, acc.Name(), constants.DevicesDir)
+			deviceEntries, err := os.ReadDir(devicesDir)
+			if err != nil {
+				continue
+			}
+
+			for _, dev := range deviceEntries {
+				var info *models.DeviceInfo
+				var err error
+
+				if !dev.IsDir() {
+					if dev.Name() == constants.DeviceInfoFile {
+						// Special case for DeviceInfo.xml directly in devicesDir
+						path := filepath.Join(devicesDir, constants.DeviceInfoFile)
+						info, err = ds.parseDeviceInfoFile(path)
+					}
+				} else {
+					path := filepath.Join(devicesDir, dev.Name(), constants.DeviceInfoFile)
+					info, err = ds.parseDeviceInfoFile(path)
+				}
+
+				if err == nil && info != nil {
+					// Use a unique key for deduplication
+					key := info.DeviceID
+					if key == "" {
+						key = info.IPAddress
+					}
+					if !seenIDs[key] {
+						devices = append(devices, *info)
+						seenIDs[key] = true
+					}
+				}
 			}
 		}
 	}
 
 	return devices, nil
+}
+
+func (ds *DataStore) parseDeviceInfoFile(path string) (*models.DeviceInfo, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	var info struct {
+		XMLName    xml.Name `xml:"info"`
+		DeviceID   string   `xml:"deviceID,attr"`
+		Name       string   `xml:"name"`
+		Type       string   `xml:"type"`
+		ModuleType string   `xml:"moduleType"`
+		Components []struct {
+			Category        string `xml:"componentCategory"`
+			SoftwareVersion string `xml:"softwareVersion"`
+			SerialNumber    string `xml:"serialNumber"`
+		} `xml:"components>component"`
+		NetworkInfo []struct {
+			Type      string `xml:"type,attr"`
+			IPAddress string `xml:"ipAddress"`
+		} `xml:"networkInfo"`
+	}
+
+	if err := xml.Unmarshal(data, &info); err != nil {
+		return nil, err
+	}
+
+	deviceInfo := &models.DeviceInfo{
+		DeviceID:    info.DeviceID,
+		ProductCode: fmt.Sprintf("%s %s", info.Type, info.ModuleType),
+		Name:        info.Name,
+	}
+
+	for _, comp := range info.Components {
+		if comp.Category == "SCM" {
+			deviceInfo.FirmwareVersion = comp.SoftwareVersion
+			deviceInfo.DeviceSerialNumber = comp.SerialNumber
+		} else if comp.Category == "PackagedProduct" {
+			deviceInfo.ProductSerialNumber = comp.SerialNumber
+		}
+	}
+
+	for _, net := range info.NetworkInfo {
+		if net.Type == "SCM" {
+			deviceInfo.IPAddress = net.IPAddress
+		}
+	}
+
+	return deviceInfo, nil
 }
 
 func (ds *DataStore) GetPresets(account string) ([]models.Preset, error) {
@@ -336,6 +417,9 @@ func (ds *DataStore) SaveRecents(account string, recents []models.Recent) error 
 }
 
 func (ds *DataStore) SaveDeviceInfo(account string, device string, info *models.DeviceInfo) error {
+	if device == "" {
+		return fmt.Errorf("device ID/name cannot be empty")
+	}
 	dir := ds.AccountDeviceDir(account, device)
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return err

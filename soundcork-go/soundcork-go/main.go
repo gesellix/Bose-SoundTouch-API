@@ -46,9 +46,44 @@ func (s *Server) discoverDevices() {
 	}
 
 	for _, d := range devices {
-		log.Printf("Discovered Bose device: %s at %s", d.Name, d.Host)
-		// Update datastore for a default account (e.g., "default")
-		// In a real scenario, we might need to know which account this device belongs to.
+		log.Printf("Discovered Bose device: %s at %s (Serial: %s)", d.Name, d.Host, d.SerialNo)
+
+		// 1. Check if we already have this device by serial number (best identifier)
+		var existingID string // The directory name used for this device
+
+		allDevices, _ := s.ds.ListAllDevices()
+		for _, known := range allDevices {
+			if d.SerialNo != "" && (known.DeviceID == d.SerialNo || known.DeviceSerialNumber == d.SerialNo) {
+				existingID = known.DeviceID
+				if existingID == "" {
+					existingID = known.IPAddress
+				}
+				break
+			}
+		}
+
+		// Use SerialNo if available, otherwise fallback to IP for the datastore directory name
+		deviceID := d.SerialNo
+		if deviceID == "" {
+			// If serial is missing from discovery, try to fetch it from :8090/info
+			log.Printf("Serial number missing for %s at %s, attempting live info fetch...", d.Name, d.Host)
+			liveInfo, err := s.sm.GetLiveDeviceInfo(d.Host)
+			if err == nil && liveInfo.SerialNumber != "" {
+				d.SerialNo = liveInfo.SerialNumber
+				log.Printf("Successfully retrieved serial number %s for %s via live info", d.SerialNo, d.Host)
+			}
+		}
+
+		deviceID = d.SerialNo
+		if deviceID == "" {
+			deviceID = d.Host
+		}
+
+		// 2. If we found it by serial but it was stored under an IP-based directory,
+		// we should ideally migrate it, but for now, we'll just ensure the Serial one is used.
+		// If the IP changed for a known serial, SaveDeviceInfo will overwrite the old IP info
+		// if deviceID == existingBySerial.DeviceID.
+
 		info := &models.DeviceInfo{
 			DeviceID:           d.SerialNo,
 			Name:               d.Name,
@@ -57,7 +92,14 @@ func (s *Server) discoverDevices() {
 			ProductCode:        d.ModelID,
 			FirmwareVersion:    "0.0.0", // Unknown from discovery
 		}
-		if err := s.ds.SaveDeviceInfo("default", d.SerialNo, info); err != nil {
+
+		// If we had an IP-based entry and now have a Serial, clean up the IP-based entry
+		if d.SerialNo != "" && existingID != "" && existingID != d.SerialNo {
+			log.Printf("Device %s previously known as %s, migrating to serial-based ID %s", d.Name, existingID, d.SerialNo)
+			s.ds.RemoveDevice("default", existingID)
+		}
+
+		if err := s.ds.SaveDeviceInfo("default", deviceID, info); err != nil {
 			log.Printf("Failed to save device info: %v", err)
 		}
 	}
