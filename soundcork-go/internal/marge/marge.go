@@ -229,7 +229,7 @@ func AccountFullToXML(ds *datastore.DataStore, account string) ([]byte, error) {
 			res += `</device>`
 		}
 	}
-	res += `</devices><mode>global</mode><preferrendLanguage>en</preferrendLanguage>`
+	res += `</devices><mode>global</mode><preferredLanguage>en</preferredLanguage>`
 	res += ProviderSettingsToXML(account)
 
 	if lastDeviceID != "" {

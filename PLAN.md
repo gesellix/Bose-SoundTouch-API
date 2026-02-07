@@ -160,38 +160,38 @@ This allows for incremental porting and testing without breaking existing functi
 - [x] Add control for redaction and logging verbosity (e.g., via environment variables).
 - [x] Ensure all proxy interactions are traceable for troubleshooting (e.g. issues like #129).
 
-## Phase 10: Überböse Parity & Advanced Features (Planned)
+## Phase 10: Ueberboese Parity & Advanced Features (Planned)
 
 **Goal**: Reach functional parity with `ueberboese-api` regarding the Bose-Upstream emulation and explore project-specific extensions.
 
 ### Missing Bose Upstream Endpoints (Parity)
 - [x] **Stats & Analytics**:
-    - [x] `POST /streaming/stats/usage` (Wichtig für Playback-Events).
-    - [x] `POST /streaming/stats/error` (Diagnose-Daten).
-- [x] **Erweiterte Marge-Funktionen**:
+    - [x] `POST /streaming/stats/usage` (Important for playback events).
+    - [x] `POST /streaming/stats/error` (Diagnostic data).
+- [x] **Advanced Marge Functions**:
     - [x] `GET /marge/streaming/account/{account}/provider_settings`
     - [x] `GET /marge/streaming/device/{device}/streaming_token`
     - [x] `POST /marge/streaming/support/customersupport`
 - [ ] **BMX / Spotify**:
-    - [ ] Implementierung der Spotify-Endpunkte innerhalb der Bose-Infrastruktur (`/oauth/device/...`).
+    - [ ] Implementation of Spotify endpoints within the Bose infrastructure (`/oauth/device/...`).
 
 ### Comparison of Project-Specific (Management) APIs
-Dabei handelt es sich um Endpunkte, die NICHT Teil der originalen Bose-API sind, sondern der Verwaltung des jeweiligen Dienstes dienen.
+These are endpoints that are NOT part of the original Bose API, but are used to manage the respective service.
 
 | Feature              | Soundcork-Go (`/setup`)              | Ueberboese-API (`/mgmt`)                       |
 |:---------------------|:-------------------------------------|:-----------------------------------------------|
-| **Geräte-Migration** | SSH/SCP Automatisierung (`/migrate`) | Manuell                                        |
-| **Konfiguration**    | Backup & View (`/backup`, `/info`)   | Account/Speaker Mapping (`/accounts`)          |
-| **Proxy-Steuerung**  | Live-Redaction/Body-Log Switch       | -                                              |
+| **Device Migration** | SSH/SCP Automation (`/migrate`)      | Manual                                         |
+| **Configuration**    | Backup & View (`/backup`, `/info`)   | Account/Speaker Mapping (`/accounts`)          |
+| **Proxy Control**    | Live-Redaction/Body-Log Switch       | -                                              |
 | **Spotify Setup**    | -                                    | OAuth Flow (`/spotify/init`, `/confirm`)       |
 | **Events**           | -                                    | Device Event Log (`/mgmt/devices/{id}/events`) |
 
 ### Tasks for Phase 10
-- [x] Implementierung der fehlenden **Bose Stats API** zur besseren Kompatibilität.
-- [x] Analyse und Bewertung des **Device Event Log** (inspiriert durch Ueberboese).
-- [x] Implementierung eines Event-Logging Systems für Soundcork (`/setup/events`).
-- [x] Implementierung der erweiterten **Marge-Endpunkte** (Provider Settings, Streaming Token, Customer Support).
-- [ ] Prüfung der **Spotify OAuth** Integration (Übernahme des Flows von Ueberboese).
-- [ ] Sicherstellung der Interoperabilität bei Pfad-Parametern (z.B. `{accountId}` vs `{account}`).
+- [x] Implementation of the missing **Bose Stats API** for better compatibility.
+- [x] Analysis and evaluation of the **Device Event Log** (inspired by Ueberboese).
+- [x] Implementation of an event logging system for Soundcork (`/setup/events`).
+- [x] Implementation of the advanced **Marge endpoints** (Provider Settings, Streaming Token, Customer Support).
+- [ ] Evaluation of **Spotify OAuth** integration (adopting the flow from Ueberboese).
+- [ ] Ensuring interoperability for path parameters (e.g. `{accountId}` vs `{account}`).
 
 ---
