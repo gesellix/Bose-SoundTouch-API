@@ -260,6 +260,7 @@ func main() {
 
 	// Phase 2: Root endpoint implemented in Go
 	r.Get("/", server.handleRoot)
+	r.Get("/health", server.handleHealth)
 	r.Get("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, filepath.Join(mediaDir, "favicon-braille.svg"))
 	})
