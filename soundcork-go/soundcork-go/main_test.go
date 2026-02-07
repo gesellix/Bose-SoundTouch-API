@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/deborahgu/soundcork/internal/datastore"
+	"github.com/gesellix/bose-soundtouch-api/internal/datastore"
 	"github.com/go-chi/chi/v5"
 )
 

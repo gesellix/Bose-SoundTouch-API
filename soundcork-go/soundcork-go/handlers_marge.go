@@ -9,8 +9,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/deborahgu/soundcork/internal/marge"
-	"github.com/deborahgu/soundcork/internal/models"
+	"github.com/gesellix/bose-soundtouch-api/internal/marge"
+	"github.com/gesellix/bose-soundtouch-api/internal/models"
 	"github.com/go-chi/chi/v5"
 )
 

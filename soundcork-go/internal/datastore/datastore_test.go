@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/deborahgu/soundcork/internal/models"
+	"github.com/gesellix/bose-soundtouch-api/internal/models"
 )
 
 func TestDataStore(t *testing.T) {

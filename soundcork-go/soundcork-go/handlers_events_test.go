@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/deborahgu/soundcork/internal/datastore"
-	"github.com/deborahgu/soundcork/internal/models"
+	"github.com/gesellix/bose-soundtouch-api/internal/datastore"
+	"github.com/gesellix/bose-soundtouch-api/internal/models"
 	"github.com/go-chi/chi/v5"
 )
 

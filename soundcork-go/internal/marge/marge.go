@@ -7,9 +7,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/deborahgu/soundcork/internal/constants"
-	"github.com/deborahgu/soundcork/internal/datastore"
-	"github.com/deborahgu/soundcork/internal/models"
+	"github.com/gesellix/bose-soundtouch-api/internal/constants"
+	"github.com/gesellix/bose-soundtouch-api/internal/datastore"
+	"github.com/gesellix/bose-soundtouch-api/internal/models"
 )
 
 const DateStr = "2012-09-19T12:43:00.000+00:00"

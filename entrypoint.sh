@@ -7,7 +7,7 @@ fastapi run soundcork/main.py --port 8001 --host 0.0.0.0 &
 
 # Start Go frontend on the primary PORT
 echo "Starting Go frontend on port ${PORT}..."
-./soundcork-go-bin &
+./bose-soundtouch-api-bin &
 
 # Wait for processes
 wait

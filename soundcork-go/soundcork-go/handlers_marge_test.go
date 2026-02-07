@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/deborahgu/soundcork/internal/datastore"
+	"github.com/gesellix/bose-soundtouch-api/internal/datastore"
 )
 
 func TestMargeSourceProviders(t *testing.T) {

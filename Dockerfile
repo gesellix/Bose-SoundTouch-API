@@ -4,7 +4,7 @@ WORKDIR /src
 COPY soundcork-go/go.mod soundcork-go/go.sum ./
 RUN go mod download
 COPY soundcork-go/ ./
-RUN CGO_ENABLED=0 go build -o /app/soundcork-go-bin ./soundcork-go
+RUN CGO_ENABLED=0 go build -o /app/bose-soundtouch-api-bin ./soundcork-go
 
 # Stage 2: Build final image
 FROM python:3.12-slim
@@ -30,7 +30,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy Go binary from builder
-COPY --from=go-builder /app/soundcork-go-bin .
+COPY --from=go-builder /app/bose-soundtouch-api-bin .
 
 # Copy the rest of the application code
 COPY . .

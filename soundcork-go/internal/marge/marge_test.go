@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/deborahgu/soundcork/internal/datastore"
-	"github.com/deborahgu/soundcork/internal/models"
+	"github.com/gesellix/bose-soundtouch-api/internal/datastore"
+	"github.com/gesellix/bose-soundtouch-api/internal/models"
 )
 
 func TestMargeXML(t *testing.T) {

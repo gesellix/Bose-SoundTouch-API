@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/deborahgu/soundcork/internal/models"
+	"github.com/gesellix/bose-soundtouch-api/internal/models"
 )
 
 func (s *Server) handleUsageStats(w http.ResponseWriter, r *http.Request) {

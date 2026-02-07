@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/deborahgu/soundcork/internal/bmx"
+	"github.com/gesellix/bose-soundtouch-api/internal/bmx"
 	"github.com/go-chi/chi/v5"
 )
 

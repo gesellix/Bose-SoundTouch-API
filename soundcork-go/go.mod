@@ -1,4 +1,4 @@
-module github.com/deborahgu/soundcork
+module github.com/gesellix/bose-soundtouch-api
 
 go 1.25.6
 

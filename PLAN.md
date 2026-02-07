@@ -22,7 +22,7 @@ This allows for incremental porting and testing without breaking existing functi
 
 **Goal**: Establish the Go project and the delegation mechanism.
 
-- [x] Initialize Go module (`go mod init github.com/deborahgu/soundcork`).
+- [x] Initialize Go module (`go mod init github.com/gesellix/bose-soundtouch-api`).
 - [x] Set up a basic web server (using `net/http` and `Chi` router).
 - [x] Implement the **Reverse Proxy**:
     - Use `httputil.ReverseProxy` to forward unrecognized requests to `http://localhost:8001`.
@@ -113,6 +113,7 @@ This allows for incremental porting and testing without breaking existing functi
 - [x] Lowercase guessed hostnames for URL consistency.
 - [x] Fixed: Multiple devices with empty serial numbers correctly displayed in UI.
 - [x] Enhanced device discovery: Fetch stable SerialNo from `:8090/info` if missing.
+- [x] Add a release workflow to publish binaries to GitHub releases.
 
 ---
 

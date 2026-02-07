@@ -7,8 +7,8 @@ import (
 	"net"
 	"net/http"
 
-	"github.com/deborahgu/soundcork/internal/datastore"
-	"github.com/deborahgu/soundcork/internal/ssh"
+	"github.com/gesellix/bose-soundtouch-api/internal/datastore"
+	"github.com/gesellix/bose-soundtouch-api/internal/ssh"
 )
 
 const SoundTouchSdkPrivateCfgPath = "/opt/Bose/etc/SoundTouchSdkPrivateCfg.xml"

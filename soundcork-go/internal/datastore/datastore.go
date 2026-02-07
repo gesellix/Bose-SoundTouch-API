@@ -10,8 +10,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/deborahgu/soundcork/internal/constants"
-	"github.com/deborahgu/soundcork/internal/models"
+	"github.com/gesellix/bose-soundtouch-api/internal/constants"
+	"github.com/gesellix/bose-soundtouch-api/internal/models"
 )
 
 func exists(path string) bool {

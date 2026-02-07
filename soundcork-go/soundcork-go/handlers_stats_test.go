@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/deborahgu/soundcork/internal/datastore"
+	"github.com/gesellix/bose-soundtouch-api/internal/datastore"
 )
 
 func TestStatsHandlers(t *testing.T) {

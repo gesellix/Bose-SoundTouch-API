@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/deborahgu/soundcork/internal/models"
+	"github.com/gesellix/bose-soundtouch-api/internal/models"
 )
 
 const (
