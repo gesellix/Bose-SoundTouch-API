@@ -154,7 +154,7 @@ func main() {
 		if hostname == "" {
 			hostname = "localhost"
 		}
-		serverURL = "http://" + hostname + ":" + port
+		serverURL = "http://" + strings.ToLower(hostname) + ":" + port
 	}
 
 	sm := setup.NewManager(serverURL, ds)
