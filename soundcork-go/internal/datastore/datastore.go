@@ -1,11 +1,13 @@
 package datastore
 
 import (
+	"encoding/json"
 	"encoding/xml"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/deborahgu/soundcork/internal/constants"
@@ -13,14 +15,19 @@ import (
 )
 
 type DataStore struct {
-	DataDir string
+	DataDir      string
+	eventMutex   sync.RWMutex
+	deviceEvents map[string][]models.DeviceEvent
 }
 
 func NewDataStore(dataDir string) *DataStore {
 	if dataDir == "" {
 		dataDir = "data"
 	}
-	return &DataStore{DataDir: dataDir}
+	return &DataStore{
+		DataDir:      dataDir,
+		deviceEvents: make(map[string][]models.DeviceEvent),
+	}
 }
 
 func (ds *DataStore) AccountDir(account string) string {
@@ -552,4 +559,57 @@ func (ds *DataStore) GetETagForAccount(account string) int64 {
 		max = e3
 	}
 	return max
+}
+
+func (ds *DataStore) SaveUsageStats(stats models.UsageStats) error {
+	dir := filepath.Join(ds.DataDir, "stats", "usage")
+	os.MkdirAll(dir, 0755)
+	filename := fmt.Sprintf("%d_%s.json", time.Now().UnixNano(), stats.DeviceID)
+	path := filepath.Join(dir, filename)
+	data, err := json.MarshalIndent(stats, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, data, 0644)
+}
+
+func (ds *DataStore) SaveErrorStats(stats models.ErrorStats) error {
+	dir := filepath.Join(ds.DataDir, "stats", "error")
+	os.MkdirAll(dir, 0755)
+	filename := fmt.Sprintf("%d_%s.json", time.Now().UnixNano(), stats.DeviceID)
+	path := filepath.Join(dir, filename)
+	data, err := json.MarshalIndent(stats, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, data, 0644)
+}
+
+func (ds *DataStore) AddDeviceEvent(deviceID string, event models.DeviceEvent) {
+	ds.eventMutex.Lock()
+	defer ds.eventMutex.Unlock()
+
+	events := ds.deviceEvents[deviceID]
+	events = append(events, event)
+
+	// Keep only last 100 events
+	if len(events) > 100 {
+		events = events[len(events)-100:]
+	}
+	ds.deviceEvents[deviceID] = events
+}
+
+func (ds *DataStore) GetDeviceEvents(deviceID string) []models.DeviceEvent {
+	ds.eventMutex.RLock()
+	defer ds.eventMutex.RUnlock()
+
+	events, ok := ds.deviceEvents[deviceID]
+	if !ok {
+		return []models.DeviceEvent{}
+	}
+
+	// Return a copy to avoid race conditions if the caller modifies it
+	copiedEvents := make([]models.DeviceEvent, len(events))
+	copy(copiedEvents, events)
+	return copiedEvents
 }

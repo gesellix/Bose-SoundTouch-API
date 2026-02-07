@@ -333,3 +333,83 @@ func TestMargePowerOn(t *testing.T) {
 		t.Errorf("Expected status OK, got %v", res.Status)
 	}
 }
+
+func TestMargeAdvancedFeatures(t *testing.T) {
+	tempDir, _ := os.MkdirTemp("", "soundcork-test-*")
+	defer os.RemoveAll(tempDir)
+	ds := datastore.NewDataStore(tempDir)
+
+	r, _ := setupRouter("http://localhost:8001", ds)
+	ts := httptest.NewServer(r)
+	defer ts.Close()
+
+	t.Run("ProviderSettings", func(t *testing.T) {
+		res, err := http.Get(ts.URL + "/marge/streaming/account/123/provider_settings")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if res.StatusCode != http.StatusOK {
+			t.Errorf("Expected status OK, got %v", res.Status)
+		}
+		body, _ := io.ReadAll(res.Body)
+		if !strings.Contains(string(body), "<boseId>123</boseId>") {
+			t.Errorf("Response body missing account ID: %s", body)
+		}
+	})
+
+	t.Run("StreamingToken", func(t *testing.T) {
+		res, err := http.Get(ts.URL + "/marge/streaming/device/DEV1/streaming_token")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if res.StatusCode != http.StatusOK {
+			t.Errorf("Expected status OK, got %v", res.Status)
+		}
+		token := res.Header.Get("Authorization")
+		if !strings.HasPrefix(token, "Bearer soundcork-mock-token-") {
+			t.Errorf("Invalid token header: %s", token)
+		}
+	})
+
+	t.Run("CustomerSupport", func(t *testing.T) {
+		payload := `<?xml version="1.0" encoding="UTF-8" ?>
+		<device-data>
+			<device id="587A628A4042">
+				<serialnumber>P123</serialnumber>
+				<firmware-version>27.0.6</firmware-version>
+				<product product_code="SoundTouch 10" type="5">
+					<serialnumber>SN123</serialnumber>
+				</product>
+			</device>
+			<diagnostic-data>
+				<device-landscape>
+					<rssi>Good</rssi>
+					<ip-address>192.168.1.100</ip-address>
+				</device-landscape>
+			</diagnostic-data>
+		</device-data>`
+		res, err := http.Post(ts.URL+"/marge/streaming/support/customersupport", "application/vnd.bose.streaming-v1.2+xml", strings.NewReader(payload))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if res.StatusCode != http.StatusOK {
+			t.Errorf("Expected status OK, got %v", res.Status)
+		}
+
+		// Verify event was recorded
+		events := ds.GetDeviceEvents("587A628A4042")
+		found := false
+		for _, e := range events {
+			if e.Type == "customer-support-upload" {
+				found = true
+				if e.Data["firmware"] != "27.0.6" {
+					t.Errorf("Expected firmware 27.0.6, got %v", e.Data["firmware"])
+				}
+				break
+			}
+		}
+		if !found {
+			t.Error("Customer support event not found in event log")
+		}
+	})
+}

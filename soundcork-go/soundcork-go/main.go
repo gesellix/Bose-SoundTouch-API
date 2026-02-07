@@ -290,6 +290,15 @@ func main() {
 		r.Post("/accounts/{account}/devices/{device}/recents", server.handleMargeAddRecent)
 		r.Post("/accounts/{account}/devices", server.handleMargeAddDevice)
 		r.Delete("/accounts/{account}/devices/{device}", server.handleMargeRemoveDevice)
+		r.Get("/streaming/account/{account}/provider_settings", server.handleMargeProviderSettings)
+		r.Get("/streaming/device/{device}/streaming_token", server.handleMargeStreamingToken)
+		r.Post("/streaming/support/customersupport", server.handleMargeCustomerSupport)
+	})
+
+	// Phase 10: Stats endpoints
+	r.Route("/streaming/stats", func(r chi.Router) {
+		r.Post("/usage", server.handleUsageStats)
+		r.Post("/error", server.handleErrorStats)
 	})
 
 	// Phase 7: Setup and Discovery endpoints
@@ -305,6 +314,7 @@ func main() {
 		r.Post("/backup/{deviceIP}", server.handleBackupConfig)
 		r.Get("/proxy-settings", server.handleGetProxySettings)
 		r.Post("/proxy-settings", server.handleUpdateProxySettings)
+		r.Get("/devices/{deviceId}/events", server.handleGetDeviceEvents)
 	})
 
 	// Delegation Logic: Proxy everything else to Python

@@ -1,13 +1,16 @@
 package main
 
 import (
+	"encoding/xml"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"strconv"
 	"time"
 
 	"github.com/deborahgu/soundcork/internal/marge"
+	"github.com/deborahgu/soundcork/internal/models"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -171,4 +174,47 @@ func (s *Server) handleMargeRemoveDevice(w http.ResponseWriter, r *http.Request)
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(`{"ok": true}`))
+}
+
+func (s *Server) handleMargeProviderSettings(w http.ResponseWriter, r *http.Request) {
+	account := chi.URLParam(r, "account")
+	w.Header().Set("Content-Type", "application/xml")
+	w.Write([]byte(marge.ProviderSettingsToXML(account)))
+}
+
+func (s *Server) handleMargeStreamingToken(w http.ResponseWriter, r *http.Request) {
+	// Simple mock token
+	w.Header().Set("Authorization", "Bearer soundcork-mock-token-"+strconv.FormatInt(time.Now().Unix(), 10))
+	w.WriteHeader(http.StatusOK)
+}
+
+func (s *Server) handleMargeCustomerSupport(w http.ResponseWriter, r *http.Request) {
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, "Failed to read body", http.StatusBadRequest)
+		return
+	}
+
+	var req models.CustomerSupportRequest
+	if err := xml.Unmarshal(body, &req); err != nil {
+		// Log error but might still return 200 as Bose expects
+		log.Printf("Failed to unmarshal CustomerSupportRequest: %v", err)
+	}
+
+	// Create a DeviceEvent for support data
+	event := models.DeviceEvent{
+		Type:     "customer-support-upload",
+		Time:     time.Now().Format(time.RFC3339),
+		MonoTime: time.Now().UnixNano() / int64(time.Millisecond),
+		Data: map[string]interface{}{
+			"firmware": req.Device.FirmwareVersion,
+			"product":  req.Device.Product.ProductCode,
+			"ip":       req.DiagnosticData.DeviceLandscape.IPAddress,
+			"rssi":     req.DiagnosticData.DeviceLandscape.RSSI,
+		},
+	}
+	s.ds.AddDeviceEvent(req.Device.ID, event)
+
+	w.Header().Set("Content-Type", "application/vnd.bose.streaming-v1.2+xml")
+	w.WriteHeader(http.StatusOK)
 }

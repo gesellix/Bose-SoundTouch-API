@@ -1,5 +1,9 @@
 package models
 
+import (
+	"encoding/xml"
+)
+
 type Link struct {
 	Href              string `json:"href" xml:"href,attr"`
 	UseInternalClient string `json:"useInternalClient,omitempty" xml:"useInternalClient,attr,omitempty"`
@@ -152,4 +156,52 @@ type DeviceInfo struct {
 	FirmwareVersion     string `json:"firmware_version" xml:"softwareVersion"`
 	IPAddress           string `json:"ip_address" xml:"ipAddress"`
 	Name                string `json:"name" xml:"name"`
+}
+
+type CustomerSupportDevice struct {
+	ID              string `xml:"id,attr"`
+	SerialNumber    string `xml:"serialnumber"`
+	FirmwareVersion string `xml:"firmware-version"`
+	Product         struct {
+		ProductCode  string `xml:"product_code,attr"`
+		Type         string `xml:"type,attr"`
+		SerialNumber string `xml:"serialnumber"`
+	} `xml:"product"`
+}
+
+type CustomerSupportRequest struct {
+	XMLName        xml.Name              `xml:"device-data"`
+	Device         CustomerSupportDevice `xml:"device"`
+	DiagnosticData struct {
+		DeviceLandscape struct {
+			RSSI                  string   `xml:"rssi"`
+			GatewayIP             string   `xml:"gateway-ip-address"`
+			IPAddress             string   `xml:"ip-address"`
+			NetworkConnectionType string   `xml:"network-connection-type"`
+			MacAddresses          []string `xml:"macaddresses>macaddress"`
+		} `xml:"device-landscape"`
+	} `xml:"diagnostic-data"`
+}
+
+type UsageStats struct {
+	DeviceID   string                 `json:"deviceId" xml:"deviceId"`
+	AccountID  string                 `json:"accountId" xml:"accountId"`
+	Timestamp  string                 `json:"timestamp" xml:"timestamp"`
+	EventType  string                 `json:"eventType" xml:"eventType"`
+	Parameters map[string]interface{} `json:"parameters" xml:"parameters"`
+}
+
+type ErrorStats struct {
+	DeviceID     string `json:"deviceId" xml:"deviceId"`
+	ErrorCode    string `json:"errorCode" xml:"errorCode"`
+	ErrorMessage string `json:"errorMessage" xml:"errorMessage"`
+	Timestamp    string `json:"timestamp" xml:"timestamp"`
+	Details      string `json:"details,omitempty" xml:"details,omitempty"`
+}
+
+type DeviceEvent struct {
+	Type     string                 `json:"type"`
+	Time     string                 `json:"time"`
+	MonoTime int64                  `json:"monoTime"`
+	Data     map[string]interface{} `json:"data"`
 }

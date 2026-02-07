@@ -40,6 +40,9 @@ func setupRouter(targetURL string, ds *datastore.DataStore) (*chi.Mux, *Server) 
 		r.Post("/accounts/{account}/devices/{device}/recents", server.handleMargeAddRecent)
 		r.Post("/accounts/{account}/devices", server.handleMargeAddDevice)
 		r.Delete("/accounts/{account}/devices/{device}", server.handleMargeRemoveDevice)
+		r.Get("/streaming/account/{account}/provider_settings", server.handleMargeProviderSettings)
+		r.Get("/streaming/device/{device}/streaming_token", server.handleMargeStreamingToken)
+		r.Post("/streaming/support/customersupport", server.handleMargeCustomerSupport)
 	})
 
 	// Setup Setup for tests
